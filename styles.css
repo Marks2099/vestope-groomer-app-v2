@@ -154,6 +154,44 @@ p {
 .gps-error { color: #8a2c26; background: #fff5f4; border: 1px solid #f1d4d0; }
 .gps-warning { color: #75520b; background: #fff9e9; border: 1px solid #f0dfaa; }
 
+.location-context {
+  width: min(100%, 410px);
+  margin-top: 24px;
+  text-align: left;
+}
+
+.location-context strong,
+.location-context small { display: block; }
+.location-context small { margin-top: 4px; font-size: 13px; line-height: 1.4; }
+.location-explanation {
+  width: min(100%, 410px);
+  margin-top: 10px;
+  color: #5f7085;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.location-explanation.friendly {
+  padding: 13px 15px;
+  border-radius: 14px;
+  background: #fff9e9;
+  border: 1px solid #f0dfaa;
+  color: #73530f;
+}
+.location-cross {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #d94b42;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 900;
+}
+.outside-start { align-items: center; }
+
 .phase-button {
   width: min(100%, 210px);
   height: 210px;
@@ -319,6 +357,8 @@ footer {
   .live-stat { min-height: 100px; }
   .live-stat strong { font-size: 26px; }
   .ride-action { min-height: 54px; font-size: 13px; }
+  .location-context { margin-top: 20px; }
+  .location-explanation { font-size: 13px; }
   footer { bottom: max(10px, env(safe-area-inset-bottom)); }
 }
 
