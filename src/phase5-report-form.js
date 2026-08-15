@@ -6,8 +6,9 @@ const REPORT_KEY = 'vestope:groomer:phase5-report';
 const QUALITY = [['excellent','Výborná','q-excellent'],['very-good','Velmi dobrá','q-verygood'],['passable','Sjízdné','q-passable'],['limited','Sjízdné s většími omezeními','q-limited'],['bad','Nesjízdné','q-bad']];
 const SNOW = [['powder','Prachový sníh'],['soft','Měkká bořivá stopa'],['wet-heavy','Mokrý těžký sníh'],['icy-fast','Zledovatělá rychlá stopa'],['lightly-dirty','Málo znečištěná stopa'],['heavily-dirty','Silně znečištěná stopa'],['firn','Starý jarní firn'],['technical','Technický umělý sníh']];
 let active = false;
+let endPhotoPromise = Promise.resolve();
 
-function esc(value) { return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
+function esc(value) { return String(value ?? '').replace(/[&<>\"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' }[c])); }
 async function latestRide() { const rides = await getRidesForDay(new Date()); return rides.sort((a,b) => Number(b.endedAt||0)-Number(a.endedAt||0))[0] || null; }
 
 function renderForm(ride) {
@@ -28,29 +29,46 @@ function renderForm(ride) {
   card.querySelector('#reportBack')?.addEventListener('click',()=>finishWithoutReport(ride));
   card.querySelector('#phase5ReportForm')?.addEventListener('submit',(event)=>submitReport(event,ride));
   card.querySelector('#endPhotoButton')?.addEventListener('click',()=>card.querySelector('#endPhotoInput')?.click());
-  card.querySelector('#endPhotoInput')?.addEventListener('change',(event)=>handleEndPhoto(event,ride));
+  card.querySelector('#endPhotoInput')?.addEventListener('change',(event)=>{ endPhotoPromise = handleEndPhoto(event,ride); });
 }
 
 async function handleEndPhoto(event, ride) {
   const file=event.target.files?.[0]; event.target.value=''; if(!file) return;
-  const button=document.querySelector('#endPhotoButton'); if(button){button.disabled=true;button.textContent='UKLÁDÁM FOTKU…';}
+  const button=document.querySelector('#endPhotoButton');
+  const saveButton=document.querySelector('.save-report');
+  if(button){button.disabled=true;button.textContent='UKLÁDÁM FOTKU…';}
+  if(saveButton) saveButton.disabled=true;
   try {
     const position=await getCurrentPosition(ride.trackPoints?.at(-1)||null);
     const nearestTrackPoint=findNearestTrackPoint(position,ride.trackPoints||[]);
     const location=position?await detectStartLocation(position,DEFAULT_AREA_ID):null;
     await addRidePhoto({rideId:ride.id,file,capturedAt:Date.now(),position,nearestTrackPoint,nearestKnownStart:location?.nearestStart?{id:location.nearestStart.id,name:location.nearestStart.name,distanceM:location.distanceToNearestStartM}:null});
     await refreshPhotoCount(ride.id);
-  } catch(error) { const count=document.querySelector('#photoCount'); if(count) count.textContent=error?.message||'Fotku se nepodařilo uložit.'; }
-  finally { const b=document.querySelector('#endPhotoButton'); if(b){b.disabled=false;b.textContent='📷 Přidat fotku';} }
+  } catch(error) {
+    const count=document.querySelector('#photoCount'); if(count) count.textContent=error?.message||'Fotku se nepodařilo uložit.';
+  } finally {
+    const b=document.querySelector('#endPhotoButton'); if(b){b.disabled=false;b.textContent='📷 Přidat fotku';}
+    const s=document.querySelector('.save-report'); if(s) s.disabled=false;
+  }
 }
 
 async function refreshPhotoCount(rideId) { const photos=await listRidePhotos(rideId); const count=document.querySelector('#photoCount'); if(count) count.textContent=photos.length?`${photos.length} fot${photos.length===1?'ka':photos.length<5?'ky':'ek'} připravena k reportu.`:'Zatím bez fotek.'; return photos; }
 
 async function submitReport(event,ride) {
-  event.preventDefault(); const form=event.currentTarget,button=form.querySelector('.save-report'); button.disabled=true; button.textContent='UKLÁDÁM…';
-  const photos=await listRidePhotos(ride.id);
-  const report={schemaVersion:1,createdAt:Date.now(),trackQuality:form.querySelector('input[name="trackQuality"]:checked')?.value||'excellent',snowConditions:[...form.querySelectorAll('input[name="snowCondition"]:checked')].map(i=>i.value),trackTypes:[...form.querySelectorAll('input[name="trackType"]:checked')].map(i=>i.value),note:form.querySelector('#phase5Note')?.value.trim()||'',photos:photoMetadataForRide(photos)};
-  await saveRide({...ride,photos:report.photos,report}); sessionStorage.setItem(REPORT_KEY,'saved'); showSaved(report,ride);
+  event.preventDefault();
+  const form=event.currentTarget,button=form.querySelector('.save-report');
+  await endPhotoPromise;
+  button.disabled=true; button.textContent='UKLÁDÁM…';
+  try {
+    const photos=await listRidePhotos(ride.id);
+    const report={schemaVersion:1,createdAt:Date.now(),trackQuality:form.querySelector('input[name="trackQuality"]:checked')?.value||'excellent',snowConditions:[...form.querySelectorAll('input[name="snowCondition"]:checked')].map(i=>i.value),trackTypes:[...form.querySelectorAll('input[name="trackType"]:checked')].map(i=>i.value),note:form.querySelector('#phase5Note')?.value.trim()||'',photos:photoMetadataForRide(photos)};
+    await saveRide({...ride,photos:report.photos,report});
+    sessionStorage.setItem(REPORT_KEY,'saved');
+    showSaved(report,ride);
+  } catch(error) {
+    button.disabled=false; button.textContent='ULOŽIT REPORT';
+    const count=document.querySelector('#photoCount'); if(count) count.textContent=error?.message||'Report se nepodařilo uložit.';
+  }
 }
 
 function showSaved(report,ride) { const card=document.querySelector('.welcome-card'); if(!card)return; const quality=QUALITY.find(([v])=>v===report.trackQuality)?.[1]||'Výborná'; card.className='welcome-card report-saved-card'; card.innerHTML=`<div class="online-badge"><span></span> ONLINE</div><div class="thanks-icon">❄</div><div class="eyebrow">REPORT ULOŽENÝ</div><h1>Paráda!</h1><p>Stopa je zapsaná. Díky za dnešní práci.</p><div class="report-saved"><strong>${esc(quality)}</strong><span>${report.snowConditions.length} sněhových podmínek · ${report.trackTypes.length} typy stopy · ${report.photos.length} fotek</span></div><button class="phase-button summary-button" id="reportDone">HOTOVO</button>`; card.querySelector('#reportDone')?.addEventListener('click',()=>location.reload()); }
