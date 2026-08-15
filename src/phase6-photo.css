@@ -12,8 +12,17 @@
   margin-top: 14px;
 }
 
-.ride-photo-button,
-.photo-add-button {
+.ride-photo-choice-grid,
+.photo-choice-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ride-photo-choice,
+.photo-add-button,
+.photo-gallery-button {
   width: 100%;
   min-height: 52px;
   border: 1px solid #d4e7f6;
@@ -24,8 +33,16 @@
   cursor: pointer;
 }
 
-.ride-photo-button:disabled,
-.photo-add-button:disabled {
+.ride-photo-choice.gallery,
+.photo-gallery-button {
+  background: #fff;
+  border-color: #dbe3eb;
+  color: #44566b;
+}
+
+.ride-photo-choice:disabled,
+.photo-add-button:disabled,
+.photo-gallery-button:disabled {
   opacity: .65;
   cursor: wait;
 }
@@ -45,4 +62,114 @@
   color: #6d7e91;
   font-size: 12px;
   line-height: 1.4;
+}
+
+.ride-photo-error {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff5f4;
+  border: 1px solid #f1d4d0;
+  color: #8a2c26;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.photo-camera-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(9, 21, 36, .72);
+}
+
+.photo-camera-card {
+  width: min(100%, 520px);
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
+  padding: 16px;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 25px 80px rgba(0,0,0,.28);
+}
+
+.photo-camera-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 2px 12px;
+  color: #172235;
+}
+
+.photo-camera-header strong { font-size: 18px; }
+.photo-camera-close {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: #edf3f8;
+  color: #31445b;
+  font-size: 27px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.photo-camera-preview-wrap {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #101820;
+  aspect-ratio: 4 / 3;
+}
+
+.photo-camera-preview {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.photo-camera-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.photo-camera-actions button {
+  min-height: 54px;
+  border-radius: 15px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.photo-camera-switch {
+  border: 1px solid #dbe3eb;
+  background: #f4f7fa;
+  color: #44566b;
+}
+
+.photo-camera-capture {
+  border: 0;
+  background: #20b55a;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(32,181,90,.2);
+}
+
+.photo-camera-actions button:disabled { opacity: .6; cursor: wait; }
+.photo-camera-hint {
+  margin-top: 10px;
+  color: #73849a;
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .photo-camera-modal { padding: 10px; }
+  .photo-camera-card { padding: 12px; border-radius: 20px; }
+  .photo-camera-actions { grid-template-columns: 1fr; }
+  .ride-photo-choice-grid,
+  .photo-choice-grid { grid-template-columns: 1fr 1fr; }
 }
