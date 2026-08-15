@@ -25,7 +25,6 @@ export class RideEngine {
 
   start(initialPosition = null) {
     if (this.isRunning) return;
-
     this.reset();
     this.startedAt = Date.now();
     this.isRunning = true;
@@ -49,6 +48,9 @@ export class RideEngine {
     this.pausedDurationMs += Date.now() - this.pausedAt;
     this.pausedAt = 0;
     this.isPaused = false;
+    // Establish a fresh GPS baseline after pause so movement during the pause
+    // is never accidentally added to the active ride distance.
+    this.lastPosition = null;
     this.startGpsWatch();
     this.emit();
   }
