@@ -1,9 +1,9 @@
-const CACHE_NAME = 'vestope-groomer-v2-shell-v21';
+const CACHE_NAME = 'vestope-groomer-v2-shell-v22';
 const CACHE_PREFIX = 'vestope-groomer-v2-shell-v';
 const CONTROL_CACHE = 'vestope-groomer-v2-control';
 const SHELL = [
   './', './index.html', './styles.css', './src/mobile-ux.css', './manifest.webmanifest', './version.json', './assets/pwa-logo.png', './assets/pwa-logo-512.png',
-  './app.js', './src/auth-gate.js', './src/auth-gate.css', './src/pwa-install.js', './src/ride-animation.js', './src/version-status.js',
+  './app.js', './src/auth-gate.js', './src/auth-gate.css', './src/pwa-install.js', './src/ride-animation.js', './src/version-status.js', './src/report-back-resume.js', './src/groomer-identity.js',
   './src/groomer-profile.js', './src/phase5-report-form.js', './src/phase5-report.css',
   './src/phase6-ride-photo.js', './src/phase6-photo.css', './src/phase8-animation.css',
   './src/photo-capture.js', './src/photo-store.js', './src/ride-engine.js',
