@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { installPwaSupport } from './pwa-install.js';
 
 const SUPABASE_URL = 'https://wlxrqqtvpqumvbbdfpuv.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_aXH1aT3OZN2p0mMzfWLt0w_YGFBFaQl';
@@ -25,5 +26,8 @@ function renderLogin(error = '') {
 }
 function togglePasswordVisibility(){const input=document.querySelector('#loginPassword');const button=document.querySelector('#togglePassword');if(!input||!button)return;const visible=input.type==='text';input.type=visible?'password':'text';button.textContent=visible?'👁️':'🙈';button.setAttribute('aria-label',visible?'Zobrazit heslo':'Skrýt heslo');button.setAttribute('aria-pressed',String(!visible));}
 async function handleLogin(event){event.preventDefault();const button=event.currentTarget.querySelector('button[type="submit"]');const username=document.querySelector('#loginUsername').value.trim();const password=document.querySelector('#loginPassword').value;button.disabled=true;button.textContent='PŘIHLAŠUJI…';const email=username.toLowerCase()===LOGIN_USERNAME.toLowerCase()?LOGIN_EMAIL:username;const {error}=await supabase.auth.signInWithPassword({email,password});if(error){button.disabled=false;button.textContent='PŘIHLÁSIT SE';renderLogin('Nesprávné uživatelské jméno nebo heslo.');return;}await bootApp();}
-async function bootApp(){const {data:{session}}=await supabase.auth.getSession();if(!session)return renderLogin();try{await import('../app.js');await import('./phase5-report-form.js').then(({installPhase5ReportForm})=>installPhase5ReportForm());await import('./phase6-ride-photo.js').then(({installPhase6RidePhoto})=>installPhase6RidePhoto());await import('./groomer-profile.js').then(({installGroomerProfile})=>installGroomerProfile());await import('./pwa-install.js').then(({installPwaSupport})=>installPwaSupport());}catch(error){renderLogin('Aplikaci se nepodařilo načíst. Zkuste stránku obnovit.');console.error(error);}}
-renderLogin();bootApp();
+async function bootApp(){const {data:{session}}=await supabase.auth.getSession();if(!session)return renderLogin();try{await import('../app.js');await import('./phase5-report-form.js').then(({installPhase5ReportForm})=>installPhase5ReportForm());await import('./phase6-ride-photo.js').then(({installPhase6RidePhoto})=>installPhase6RidePhoto());await import('./groomer-profile.js').then(({installGroomerProfile})=>installGroomerProfile());}catch(error){renderLogin('Aplikaci se nepodařilo načíst. Zkuste stránku obnovit.');console.error(error);}}
+
+installPwaSupport();
+renderLogin();
+bootApp();
