@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vestope-groomer-v2-shell-v14';
+const CACHE_NAME = 'vestope-groomer-v2-shell-v15';
 const SHELL = [
   './', './index.html', './styles.css', './src/mobile-ux.css', './manifest.webmanifest', './assets/pwa-icon.svg',
   './app.js', './src/auth-gate.js', './src/auth-gate.css', './src/pwa-install.js',
@@ -9,16 +9,17 @@ const SHELL = [
 ];
 
 const REMOTE_ASSETS = [
-  'https://raw.githubusercontent.com/Marks2099/vestope-groomer-app/main/logo_vestope.cz.png',
-  'https://raw.githubusercontent.com/Marks2099/vestope-groomer-app/main/vestope-groomer-background.webp'
+  { url: 'https://raw.githubusercontent.com/Marks2099/vestope-groomer-app/main/logo_vestope.cz.png', mode: 'no-cors' },
+  { url: 'https://raw.githubusercontent.com/Marks2099/vestope-groomer-app/main/vestope-groomer-background.webp', mode: 'no-cors' },
+  { url: 'https://esm.sh/@supabase/supabase-js@2', mode: 'cors' }
 ];
 
 async function cacheRemoteAssets(cache) {
-  await Promise.all(REMOTE_ASSETS.map(async url => {
+  await Promise.all(REMOTE_ASSETS.map(async ({ url, mode }) => {
     try {
-      const request = new Request(url, { mode: 'no-cors', cache: 'no-store' });
+      const request = new Request(url, { mode, cache: 'no-store' });
       const response = await fetch(request);
-      if (response) await cache.put(request, response.clone());
+      if (response && (response.ok || response.type === 'opaque')) await cache.put(request, response.clone());
     } catch (_) {}
   }));
 }
