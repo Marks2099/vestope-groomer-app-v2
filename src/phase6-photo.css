@@ -1,0 +1,48 @@
+.photo-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ride-photo-row,
+.photo-report-row {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.ride-photo-button,
+.photo-add-button {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid #d4e7f6;
+  border-radius: 16px;
+  background: #edf6fd;
+  color: #1769aa;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.ride-photo-button:disabled,
+.photo-add-button:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+
+.photo-report-section {
+  margin-top: 4px;
+}
+
+.photo-report-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-count {
+  margin-top: 9px;
+  color: #6d7e91;
+  font-size: 12px;
+  line-height: 1.4;
+}
