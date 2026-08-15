@@ -31,7 +31,9 @@
     <footer>VeStope.cz – Evidence a monitoring rolbařů</footer>
   </main>
   <script>
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).catch(() => {});
+    }
   </script>
   <script type="module" src="./src/auth-gate.js"></script>
   <script type="module" src="./src/ride-animation.js"></script>
