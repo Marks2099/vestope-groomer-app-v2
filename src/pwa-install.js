@@ -1,0 +1,90 @@
+let deferredPrompt = null;
+let installed = false;
+const STYLE_ID = 'pwa-install-style';
+
+export function installPwaSupport() {
+  installStyles();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    deferredPrompt = event;
+    installed = false;
+    ensureInstallButton();
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    installed = true;
+    ensureInstallButton();
+  });
+
+  ensureInstallButton();
+  const observer = new MutationObserver(() => ensureInstallButton());
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+function ensureInstallButton() {
+  const card = document.querySelector('.welcome-card');
+  if (!card || card.classList.contains('auth-card')) return;
+
+  let topbar = card.querySelector('.app-topbar');
+  if (!topbar) return;
+  if (topbar.querySelector('#pwaInstallButton')) return;
+
+  const button = document.createElement('button');
+  button.id = 'pwaInstallButton';
+  button.type = 'button';
+  button.className = 'pwa-install-button';
+  button.innerHTML = '<span aria-hidden="true">＋</span><span>NA PLOCHU</span>';
+  button.addEventListener('click', handleInstall);
+  topbar.appendChild(button);
+
+  updateButtonVisibility(button);
+}
+
+function updateButtonVisibility(button) {
+  const standalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  button.hidden = installed || standalone;
+}
+
+async function handleInstall() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const result = await deferredPrompt.userChoice;
+    if (result?.outcome === 'accepted') installed = true;
+    deferredPrompt = null;
+    ensureInstallButton();
+    return;
+  }
+
+  if (isIos()) {
+    showInstallHelp('Na iPhonu/iPadu klepni v Safari na tlačítko Sdílet a potom zvol „Přidat na plochu“.');
+    return;
+  }
+
+  showInstallHelp('Pokud prohlížeč instalaci podporuje, otevři jeho nabídku a zvol „Přidat na plochu“ nebo „Nainstalovat aplikaci“.');
+}
+
+function isIos() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function showInstallHelp(message) {
+  document.querySelector('.pwa-help-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.className = 'pwa-help-modal';
+  modal.innerHTML = `<div class="pwa-help-card" role="dialog" aria-modal="true"><button type="button" class="pwa-help-close" aria-label="Zavřít">×</button><div class="eyebrow">OFFLINE APLIKACE</div><h2>VeStope na ploše</h2><p>${message}</p><button type="button" class="pwa-help-ok">ROZUMÍM</button></div>`;
+  document.body.appendChild(modal);
+  modal.querySelector('.pwa-help-close').addEventListener('click', () => modal.remove());
+  modal.querySelector('.pwa-help-ok').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', event => { if (event.target === modal) modal.remove(); });
+}
+
+function installStyles() {
+  if (document.querySelector(`#${STYLE_ID}`)) return;
+  const style = document.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = `.pwa-install-button{display:inline-flex;align-items:center;gap:6px;border:1px solid #d5e3ef;background:#fff;color:#1769aa;padding:10px 13px;border-radius:999px;font-weight:900;font-size:11px;cursor:pointer;letter-spacing:.03em;white-space:nowrap;box-shadow:0 8px 22px rgba(25,62,105,.08)}.pwa-install-button span:first-child{font-size:17px;line-height:12px}.pwa-install-button:hover{background:#f5faff}.pwa-install-button:active{transform:scale(.98)}.pwa-install-button[hidden]{display:none}.pwa-help-modal{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(17,34,53,.35);backdrop-filter:blur(6px)}.pwa-help-card{position:relative;width:min(100%,420px);padding:30px 24px 24px;border-radius:24px;background:#fff;box-shadow:0 24px 70px rgba(25,62,105,.24)}.pwa-help-card h2{margin:8px 0;color:#172235;font-size:28px}.pwa-help-card p{color:#617287;line-height:1.55}.pwa-help-close{position:absolute;right:14px;top:12px;width:36px;height:36px;border:0;border-radius:50%;background:#f1f6fa;color:#52657a;font-size:24px;cursor:pointer}.pwa-help-ok{width:100%;margin-top:12px;border:0;border-radius:14px;padding:13px;background:#1769aa;color:#fff;font-weight:900;cursor:pointer}@media(max-width:600px){.pwa-install-button{padding:9px 10px;font-size:10px}.pwa-install-button span:first-child{font-size:15px}}`;
+  document.head.appendChild(style);
+}
