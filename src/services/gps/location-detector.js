@@ -26,6 +26,7 @@ const ZELEZNA_RUDA_STARTS = Object.freeze([
   { id: '64b1b4e0-9cbf-402c-a845-26756d03a530', name: 'Hojsova Stráž', latitude: 49.2054436, longitude: 13.2080947 },
   { id: '9cb48263-fef9-441a-8b25-41f1f879b44e', name: 'Samoty', latitude: 49.1346483, longitude: 13.2360564 },
   { id: '2532d2f5-05ea-4b40-859a-d2f0a1ae4fd2', name: 'Špičácké sedlo', latitude: 49.1734308, longitude: 13.2254028 },
+  { id: '63cea02b-5231-4341-a8db-ac0f74bfa451', name: 'Zwieseler Waldhaus', latitude: 49.0984183, longitude: 13.2449519 },
 ]);
 
 let cachedStarts = new Map();
