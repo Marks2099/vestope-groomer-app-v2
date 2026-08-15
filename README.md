@@ -4,21 +4,32 @@ Nová čistá PWA aplikace pro rolbaře VeStope.cz.
 
 ## Stav projektu
 
-**v0.3.0 – Fáze 3: persistentní uložení dokončené jízdy**
+**v0.8.0 – profil rolbaře, sezónní souhrn a Fáze 8**
 
-Fáze 1 (GPS preflight) a fáze 2 (GPS tracking, živý čas/vzdálenost, pauza a potvrzení ukončení) byly otestovány. Fáze 3 přidává samostatnou datovou vrstvu pro dokončené jízdy.
+Fáze 1–6 byly postupně otestovány v aplikaci. Fáze 8 přidává dokončovací animaci. Aktuálně je připraven také datový a UI základ pro autentizovaného rolbaře, jeho stroj a sezónní souhrn.
 
-### Fáze 3 obsahuje
+### Profil rolbaře
 
-- po potvrzení ukončení se dokončená jízda uloží do IndexedDB,
-- každý záznam má stabilní `id` a `schemaVersion`,
-- ukládá se začátek, konec, aktivní čas, celková vzdálenost a délka pauz,
-- datový model má připravené pole pro budoucí fotografie a report,
-- je připravená agregace jízd za konkrétní kalendářní den pro pozdější denní statistiky,
-- při nedostupnosti IndexedDB existuje malý localStorage fallback,
-- Service Worker byl aktualizován tak, aby novou datovou vrstvu správně cachoval a při nasazení se nepoužila stará shell verze.
+- uživatel není pevně přiřazen k jedné oblasti,
+- databázový profil `groomers` obsahuje uživatelské jméno, aktivní stav, roli a údaje o stroji,
+- stroj má název/označení a průměrnou spotřebu v l/100 km,
+- údaje o stroji lze později zobrazit při prvním přihlášení a upravovat v Můj souhrn.
 
-**Poznámka:** Ve Fázi 3 se data zatím ukládají pouze lokálně v zařízení. Serverová synchronizace bude řešena až v samostatné fázi, aby nebyla současně měněna GPS, úložiště a backendová komunikace.
+### Můj souhrn
+
+- aktuální sezóna se určuje automaticky jako září–srpen, např. `2026/27`,
+- souhrn počítá upravené kilometry, aktivní čas, počet jízd a počet unikátních upravovaných dnů,
+- zobrazuje seznam jednotlivých jízd,
+- datový model serveru obsahuje `groomer_rides` pro dlouhodobé sezónní statistiky,
+- lokální UI základ používá stejné údaje z IndexedDB, dokud nebude připojena autentizovaná synchronizace.
+
+### Autentizace
+
+Finální přihlášení bude založené na Supabase Auth a tabulce `groomers`. Uživatel se po prvním přihlášení drží v bezpečné session na zařízení; odhlášení umožní přihlásit jiného rolbaře. Oblast se k uživateli nepřipíná – určuje se podle konkrétní jízdy/GPS.
+
+### Bezpečnost databáze
+
+`groomer_rides` má RLS a vlastní čtení/zápis pouze pro přihlášeného aktivního rolbaře. Profil rolbaře má vlastní čtení a aktualizaci.
 
 ## Vývojová pravidla
 
