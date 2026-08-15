@@ -24,17 +24,35 @@ function renderLogin(error = '') {
     <p>Pro pokračování do aplikace VeStope.cz se přihlas.</p>
     <form id="loginForm" class="auth-form">
       <label>Uživatelské jméno<input id="loginUsername" type="text" value="${escapeHtml(LOGIN_USERNAME)}" autocomplete="username" required></label>
-      <label>Heslo<input id="loginPassword" type="password" autocomplete="current-password" required></label>
+      <label>Heslo
+        <span style="position:relative;display:block">
+          <input id="loginPassword" type="password" autocomplete="current-password" required style="padding-right:58px;width:100%;box-sizing:border-box">
+          <button id="togglePassword" type="button" aria-label="Zobrazit heslo" aria-pressed="false" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:transparent;padding:8px;cursor:pointer;font-size:22px;line-height:1">👁️</button>
+        </span>
+      </label>
       ${error ? `<div class="auth-error" role="alert">${escapeHtml(error)}</div>` : ''}
       <button class="phase-button" type="submit">PŘIHLÁSIT SE</button>
     </form>
   </section><footer>VeStope.cz – Evidence a monitoring rolbařů</footer>`;
+
   document.querySelector('#loginForm').addEventListener('submit', handleLogin);
+  document.querySelector('#togglePassword').addEventListener('click', togglePasswordVisibility);
+}
+
+function togglePasswordVisibility() {
+  const input = document.querySelector('#loginPassword');
+  const button = document.querySelector('#togglePassword');
+  if (!input || !button) return;
+  const visible = input.type === 'text';
+  input.type = visible ? 'password' : 'text';
+  button.textContent = visible ? '👁️' : '🙈';
+  button.setAttribute('aria-label', visible ? 'Zobrazit heslo' : 'Skrýt heslo');
+  button.setAttribute('aria-pressed', String(!visible));
 }
 
 async function handleLogin(event) {
   event.preventDefault();
-  const button = event.currentTarget.querySelector('button');
+  const button = event.currentTarget.querySelector('button[type="submit"]');
   const username = document.querySelector('#loginUsername').value.trim();
   const password = document.querySelector('#loginPassword').value;
   button.disabled = true;
