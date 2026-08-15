@@ -1,9 +1,11 @@
 let deferredPrompt = null;
 let installed = false;
 const STYLE_ID = 'pwa-install-style';
+const OFFLINE_AUTH_KEY = 'vestope.offline-auth.v1';
 
 export function installPwaSupport() {
   installStyles();
+  installConnectivityStatus();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 
   window.addEventListener('beforeinstallprompt', event => {
@@ -20,7 +22,10 @@ export function installPwaSupport() {
   });
 
   ensureInstallButton();
-  const observer = new MutationObserver(() => ensureInstallButton());
+  const observer = new MutationObserver(() => {
+    ensureInstallButton();
+    updateConnectivityBadges();
+  });
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
@@ -36,10 +41,9 @@ function ensureInstallButton() {
   button.id = 'pwaInstallButton';
   button.type = 'button';
   button.className = 'pwa-install-button';
-  button.innerHTML = '<span aria-hidden="true">＋</span><span>NA PLOCHU</span>';
+  button.innerHTML = '<span class="ui-icon-wrap" aria-hidden="true">＋</span><span>NA PLOCHU</span>';
   button.addEventListener('click', handleInstall);
   topbar.appendChild(button);
-
   updateButtonVisibility(button);
 }
 
@@ -63,7 +67,7 @@ async function handleInstall() {
     return;
   }
 
-  showInstallHelp('Pokud prohlížeč instalaci podporuje, otevři jeho nabídku a zvol „Přidat na plochu“ nebo „Nainstalovat aplikaci“.');
+  showInstallHelp('Otevři nabídku prohlížeče a zvol „Přidat na plochu“ nebo „Nainstalovat aplikaci“.');
 }
 
 function isIos() {
@@ -81,10 +85,39 @@ function showInstallHelp(message) {
   modal.addEventListener('click', event => { if (event.target === modal) modal.remove(); });
 }
 
+function installConnectivityStatus() {
+  const update = () => updateConnectivityBadges();
+  window.addEventListener('online', update);
+  window.addEventListener('offline', update);
+  update();
+}
+
+function updateConnectivityBadges() {
+  const online = navigator.onLine !== false;
+  document.querySelectorAll('.online-badge').forEach(badge => {
+    badge.classList.toggle('offline', !online);
+    badge.setAttribute('aria-label', online ? 'Online' : 'Offline');
+    const text = [...badge.childNodes].find(node => node.nodeType === Node.TEXT_NODE);
+    if (text) text.textContent = online ? ' ONLINE' : ' OFFLINE';
+  });
+  document.body.classList.toggle('is-offline', !online);
+}
+
+export function hasOfflineAuthorization() {
+  try { return localStorage.getItem(OFFLINE_AUTH_KEY) === '1'; } catch { return false; }
+}
+
+export function setOfflineAuthorization(enabled) {
+  try {
+    if (enabled) localStorage.setItem(OFFLINE_AUTH_KEY, '1');
+    else localStorage.removeItem(OFFLINE_AUTH_KEY);
+  } catch (_) {}
+}
+
 function installStyles() {
   if (document.querySelector(`#${STYLE_ID}`)) return;
   const style = document.createElement('style');
   style.id = STYLE_ID;
-  style.textContent = `.pwa-install-button{display:inline-flex;align-items:center;gap:6px;border:1px solid #d5e3ef;background:#fff;color:#1769aa;padding:10px 13px;border-radius:999px;font-weight:900;font-size:11px;cursor:pointer;letter-spacing:.03em;white-space:nowrap;box-shadow:0 8px 22px rgba(25,62,105,.08)}.pwa-install-button span:first-child{font-size:17px;line-height:12px}.pwa-install-button:hover{background:#f5faff}.pwa-install-button:active{transform:scale(.98)}.pwa-install-button[hidden]{display:none}.pwa-help-modal{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(17,34,53,.35);backdrop-filter:blur(6px)}.pwa-help-card{position:relative;width:min(100%,420px);padding:30px 24px 24px;border-radius:24px;background:#fff;box-shadow:0 24px 70px rgba(25,62,105,.24)}.pwa-help-card h2{margin:8px 0;color:#172235;font-size:28px}.pwa-help-card p{color:#617287;line-height:1.55}.pwa-help-close{position:absolute;right:14px;top:12px;width:36px;height:36px;border:0;border-radius:50%;background:#f1f6fa;color:#52657a;font-size:24px;cursor:pointer}.pwa-help-ok{width:100%;margin-top:12px;border:0;border-radius:14px;padding:13px;background:#1769aa;color:#fff;font-weight:900;cursor:pointer}@media(max-width:600px){.pwa-install-button{padding:9px 10px;font-size:10px}.pwa-install-button span:first-child{font-size:15px}}`;
+  style.textContent = `.pwa-install-button{display:inline-flex;align-items:center;gap:6px;border:1px solid #d5e3ef;background:#fff;color:#1769aa;padding:10px 13px;border-radius:999px;font-weight:900;font-size:11px;cursor:pointer;letter-spacing:.03em;white-space:nowrap;box-shadow:0 8px 22px rgba(25,62,105,.08)}.pwa-install-button:hover{background:#f5faff}.pwa-install-button:active{transform:scale(.98)}.pwa-install-button[hidden]{display:none}.ui-icon-wrap{display:inline-grid;place-items:center;font-size:17px;line-height:1}.pwa-help-modal{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(17,34,53,.35);backdrop-filter:blur(6px)}.pwa-help-card{position:relative;width:min(100%,420px);padding:30px 24px 24px;border-radius:24px;background:#fff;box-shadow:0 24px 70px rgba(25,62,105,.24)}.pwa-help-card h2{margin:8px 0;color:#172235;font-size:28px}.pwa-help-card p{color:#617287;line-height:1.55}.pwa-help-close{position:absolute;right:14px;top:12px;width:36px;height:36px;border:0;border-radius:50%;background:#f1f6fa;color:#52657a;font-size:24px;cursor:pointer}.pwa-help-ok{width:100%;margin-top:12px;border:0;border-radius:14px;padding:13px;background:#1769aa;color:#fff;font-weight:900;cursor:pointer}@media(max-width:600px){.pwa-install-button{padding:9px 10px;font-size:10px}.ui-icon-wrap{font-size:15px}}`;
   document.head.appendChild(style);
 }
