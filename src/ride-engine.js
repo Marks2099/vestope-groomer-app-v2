@@ -48,8 +48,6 @@ export class RideEngine {
     this.pausedDurationMs += Date.now() - this.pausedAt;
     this.pausedAt = 0;
     this.isPaused = false;
-    // Establish a fresh GPS baseline after pause so movement during the pause
-    // is never accidentally added to the active ride distance.
     this.lastPosition = null;
     this.startGpsWatch();
     this.emit();
@@ -59,7 +57,8 @@ export class RideEngine {
     if (!this.isRunning) return this.getSnapshot();
     const endedAt = Date.now();
     const pausedExtra = this.isPaused ? endedAt - this.pausedAt : 0;
-    const activeTimeMs = Math.max(0, endedAt - this.startedAt - this.pausedDurationMs - pausedExtra);
+    const totalPausedDurationMs = this.pausedDurationMs + pausedExtra;
+    const activeTimeMs = Math.max(0, endedAt - this.startedAt - totalPausedDurationMs);
 
     this.stopGpsWatch();
     this.stopClock();
@@ -69,6 +68,7 @@ export class RideEngine {
     const result = {
       distanceM: this.totalDistanceM,
       activeTimeMs,
+      pausedDurationMs: totalPausedDurationMs,
       startedAt: this.startedAt,
       endedAt,
     };
