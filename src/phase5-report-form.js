@@ -1,6 +1,7 @@
 import { getRidesForDay, saveRide } from './ride-store.js';
 import { addRidePhoto, listRidePhotos, photoMetadataForRide } from './photo-store.js';
 import { DEFAULT_AREA_ID, detectStartLocation } from './services/gps/location-detector.js';
+import { openPhotoCamera, pickPhotoFromGallery } from './photo-capture.js';
 
 const REPORT_KEY = 'vestope:groomer:phase5-report';
 const QUALITY = [['excellent','Výborná','q-excellent'],['very-good','Velmi dobrá','q-verygood'],['passable','Sjízdné','q-passable'],['limited','Sjízdné s většími omezeními','q-limited'],['bad','Nesjízdné','q-bad']];
@@ -21,22 +22,31 @@ function renderForm(ride) {
       <section class="report-section"><div class="report-section-title"><span class="report-icon track-machine" aria-hidden="true">▰</span><div><h2>Jaká je podle tebe stopa?</h2><small>Vyber jednu variantu.</small></div></div><div class="quality-grid">${QUALITY.map(([v,l,c],i)=>`<label class="quality-option ${i===0?'selected':''}"><input type="radio" name="trackQuality" value="${v}" ${i===0?'checked':''}><span class="quality-dot ${c}"></span><span>${l}</span></label>`).join('')}</div></section>
       <section class="report-section"><div class="report-section-title"><span class="report-icon track-type" aria-hidden="true">≋</span><div><h2>Druh stopy</h2><small>Co je dnes upravené?</small></div></div><div class="check-grid track-type-grid"><label class="check-option"><input type="checkbox" name="trackType" value="classic"><span class="custom-check"></span><span>Klasika</span></label><label class="check-option"><input type="checkbox" name="trackType" value="skate"><span class="custom-check"></span><span>Skate (bruslení)</span></label></div></section>
       <section class="report-section"><label class="note-label" for="phase5Note">Poznámka <span>(nepovinné)</span></label><textarea id="phase5Note" name="note" rows="3" placeholder="Třeba: mezi Brunstem a Můstkem fouká…"></textarea></section>
-      <section class="report-section photo-report-section"><div class="report-section-title"><span class="report-icon photo-report-icon" aria-hidden="true">📷</span><div><h2>Fotky</h2><small>Fotky můžeš přidat i teď na konci jízdy.</small></div></div><div class="photo-report-row"><button type="button" class="photo-add-button" id="endPhotoButton">📷 Přidat fotku</button><input id="endPhotoInput" class="photo-input" type="file" accept="image/*" capture="environment"></div><div class="photo-count" id="photoCount"></div></section>
+      <section class="report-section photo-report-section"><div class="report-section-title"><span class="report-icon photo-report-icon" aria-hidden="true">📷</span><div><h2>Fotky</h2><small>Přidej fotku přímo fotoaparátem nebo vyber jednu z galerie.</small></div></div><div class="photo-choice-grid"><button type="button" class="photo-add-button" id="endPhotoCamera">📷 Vyfotit</button><button type="button" class="photo-gallery-button" id="endPhotoGallery">🖼️ Z galerie</button></div><div class="photo-count" id="photoCount"></div></section>
       <div class="report-actions"><button class="secondary report-back" type="button" id="reportBack">ZPĚT</button><button class="save-report" type="submit">ULOŽIT REPORT</button></div>
     </form>`;
   refreshPhotoCount(ride.id);
   card.querySelectorAll('input[name="trackQuality"]').forEach(input=>input.addEventListener('change',()=>card.querySelectorAll('.quality-option').forEach(o=>o.classList.toggle('selected',o.querySelector('input')?.checked))));
   card.querySelector('#reportBack')?.addEventListener('click',()=>finishWithoutReport(ride));
   card.querySelector('#phase5ReportForm')?.addEventListener('submit',(event)=>submitReport(event,ride));
-  card.querySelector('#endPhotoButton')?.addEventListener('click',()=>card.querySelector('#endPhotoInput')?.click());
-  card.querySelector('#endPhotoInput')?.addEventListener('change',(event)=>{ endPhotoPromise = handleEndPhoto(event,ride); });
+  card.querySelector('#endPhotoCamera')?.addEventListener('click',()=>openEndCamera(ride));
+  card.querySelector('#endPhotoGallery')?.addEventListener('click',()=>openEndGallery(ride));
 }
 
-async function handleEndPhoto(event, ride) {
-  const file=event.target.files?.[0]; event.target.value=''; if(!file) return;
-  const button=document.querySelector('#endPhotoButton');
-  const saveButton=document.querySelector('.save-report');
+async function openEndCamera(ride) {
+  await openPhotoCamera((file) => handleEndPhotoFile(file, ride));
+}
+
+function openEndGallery(ride) {
+  pickPhotoFromGallery((file) => { endPhotoPromise = handleEndPhotoFile(file, ride); });
+}
+
+async function handleEndPhotoFile(file, ride) {
+  const button = document.querySelector('#endPhotoCamera');
+  const galleryButton = document.querySelector('#endPhotoGallery');
+  const saveButton = document.querySelector('.save-report');
   if(button){button.disabled=true;button.textContent='UKLÁDÁM FOTKU…';}
+  if(galleryButton) galleryButton.disabled=true;
   if(saveButton) saveButton.disabled=true;
   try {
     const position=await getCurrentPosition(ride.trackPoints?.at(-1)||null);
@@ -47,7 +57,8 @@ async function handleEndPhoto(event, ride) {
   } catch(error) {
     const count=document.querySelector('#photoCount'); if(count) count.textContent=error?.message||'Fotku se nepodařilo uložit.';
   } finally {
-    const b=document.querySelector('#endPhotoButton'); if(b){b.disabled=false;b.textContent='📷 Přidat fotku';}
+    const b=document.querySelector('#endPhotoCamera'); if(b){b.disabled=false;b.textContent='📷 Vyfotit';}
+    const g=document.querySelector('#endPhotoGallery'); if(g){g.disabled=false;}
     const s=document.querySelector('.save-report'); if(s) s.disabled=false;
   }
 }
