@@ -3,16 +3,9 @@ const DB_VERSION = 1;
 const STORE_NAME = 'rides';
 const FALLBACK_KEY = 'vestope.groomer.rides.v1';
 
-/**
- * Persistent ride data layer.
- *
- * IndexedDB is the primary store because it is asynchronous and gives us a
- * clean path to storing photos/blobs in a later phase. localStorage is only a
- * compatibility fallback for browsers where IndexedDB is unavailable.
- */
+/** Persistent ride data layer. Photos are stored separately in IndexedDB. */
 export async function saveRide(ride) {
   const record = normalizeRide(ride);
-
   try {
     const db = await openDatabase();
     await requestAsPromise(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(record));
@@ -35,14 +28,12 @@ export async function getRide(id) {
 export async function getRidesForDay(date = new Date()) {
   const day = dateKey(date);
   let rides;
-
   try {
     const db = await openDatabase();
     rides = await getAll(db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME));
   } catch {
     rides = readFallback();
   }
-
   return rides.filter((ride) => dateKey(new Date(ride.endedAt || ride.startedAt)) === day);
 }
 
@@ -58,8 +49,8 @@ export async function getTodayStats(date = new Date()) {
 
 export function createRideRecord(result, metadata = {}) {
   return {
-    id: crypto.randomUUID(),
-    schemaVersion: 3,
+    id: metadata.id || crypto.randomUUID(),
+    schemaVersion: 4,
     status: 'completed',
     startedAt: Number(result.startedAt) || Date.now(),
     endedAt: Number(result.endedAt) || Date.now(),
@@ -77,7 +68,7 @@ export function createRideRecord(result, metadata = {}) {
       startLongitude: Number.isFinite(metadata.startLongitude) ? metadata.startLongitude : null,
     },
     trackPoints: normalizeTrackPoints(result.trackPoints),
-    photos: [],
+    photos: Array.isArray(metadata.photos) ? metadata.photos : [],
     report: null,
     createdAt: Date.now(),
   };
@@ -108,12 +99,8 @@ function normalizeRide(ride) {
 
 function normalizeTrackPoints(points) {
   if (!Array.isArray(points)) return [];
-  return points.filter((point) => (
-    Number.isFinite(point?.latitude)
-    && Number.isFinite(point?.longitude)
-  )).map((point) => ({
-    latitude: Number(point.latitude),
-    longitude: Number(point.longitude),
+  return points.filter((point) => Number.isFinite(point?.latitude) && Number.isFinite(point?.longitude)).map((point) => ({
+    latitude: Number(point.latitude), longitude: Number(point.longitude),
     accuracy: Number.isFinite(point.accuracy) ? Number(point.accuracy) : null,
     timestamp: Number(point.timestamp) || Date.now(),
   }));
@@ -121,7 +108,6 @@ function normalizeTrackPoints(points) {
 
 function openDatabase() {
   if (!('indexedDB' in window)) return Promise.reject(new Error('IndexedDB unavailable'));
-
   return new Promise((resolve, reject) => {
     const request = window.indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
@@ -143,33 +129,18 @@ function requestAsPromise(request) {
     request.onerror = () => reject(request.error || new Error('IndexedDB request failed'));
   });
 }
-
-function getAll(store) {
-  return requestAsPromise(store.getAll());
-}
-
+function getAll(store) { return requestAsPromise(store.getAll()); }
 function dateKey(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getFullYear(), month = String(date.getMonth() + 1).padStart(2, '0'), day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
-
 function readFallback() {
-  try {
-    const value = JSON.parse(window.localStorage.getItem(FALLBACK_KEY) || '[]');
-    return Array.isArray(value) ? value : [];
-  } catch {
-    return [];
-  }
+  try { const value = JSON.parse(window.localStorage.getItem(FALLBACK_KEY) || '[]'); return Array.isArray(value) ? value : []; } catch { return []; }
 }
-
 function saveFallback(record) {
   try {
     const rides = readFallback().filter((ride) => ride.id !== record.id);
     rides.push(record);
     window.localStorage.setItem(FALLBACK_KEY, JSON.stringify(rides));
-  } catch {
-    // Persistence is best-effort; the completed ride remains visible in memory.
-  }
+  } catch { /* best effort */ }
 }
