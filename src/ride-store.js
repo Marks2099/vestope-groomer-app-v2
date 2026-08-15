@@ -59,7 +59,7 @@ export async function getTodayStats(date = new Date()) {
 export function createRideRecord(result, metadata = {}) {
   return {
     id: crypto.randomUUID(),
-    schemaVersion: 1,
+    schemaVersion: 2,
     status: 'completed',
     startedAt: Number(result.startedAt) || Date.now(),
     endedAt: Number(result.endedAt) || Date.now(),
@@ -68,6 +68,11 @@ export function createRideRecord(result, metadata = {}) {
     pausedDurationMs: Math.max(0, Number(result.pausedDurationMs) || 0),
     metadata: {
       locationName: metadata.locationName || null,
+      startPointDetected: Boolean(metadata.startPointDetected),
+      nearestStartPointId: metadata.nearestStartPointId || null,
+      nearestStartPointName: metadata.nearestStartPointName || null,
+      distanceToNearestStartM: Number.isFinite(metadata.distanceToNearestStartM) ? metadata.distanceToNearestStartM : null,
+      areaId: metadata.areaId || null,
       startLatitude: Number.isFinite(metadata.startLatitude) ? metadata.startLatitude : null,
       startLongitude: Number.isFinite(metadata.startLongitude) ? metadata.startLongitude : null,
     },
@@ -84,6 +89,16 @@ function normalizeRide(ride) {
     distanceM: Math.max(0, Number(ride.distanceM) || 0),
     activeTimeMs: Math.max(0, Number(ride.activeTimeMs) || 0),
     pausedDurationMs: Math.max(0, Number(ride.pausedDurationMs) || 0),
+    metadata: {
+      locationName: ride.metadata?.locationName || null,
+      startPointDetected: Boolean(ride.metadata?.startPointDetected),
+      nearestStartPointId: ride.metadata?.nearestStartPointId || null,
+      nearestStartPointName: ride.metadata?.nearestStartPointName || null,
+      distanceToNearestStartM: Number.isFinite(ride.metadata?.distanceToNearestStartM) ? ride.metadata.distanceToNearestStartM : null,
+      areaId: ride.metadata?.areaId || null,
+      startLatitude: Number.isFinite(ride.metadata?.startLatitude) ? ride.metadata.startLatitude : null,
+      startLongitude: Number.isFinite(ride.metadata?.startLongitude) ? ride.metadata.startLongitude : null,
+    },
     photos: Array.isArray(ride.photos) ? ride.photos : [],
     report: ride.report || null,
   };
