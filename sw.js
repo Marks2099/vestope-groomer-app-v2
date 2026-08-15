@@ -1,4 +1,6 @@
-const CACHE_NAME = 'vestope-groomer-v2-shell-v19';
+const CACHE_NAME = 'vestope-groomer-v2-shell-v20';
+const CACHE_PREFIX = 'vestope-groomer-v2-shell-v';
+const CONTROL_CACHE = 'vestope-groomer-v2-control';
 const SHELL = [
   './', './index.html', './styles.css', './src/mobile-ux.css', './manifest.webmanifest', './version.json', './assets/pwa-logo.png', './assets/pwa-logo-512.png',
   './app.js', './src/auth-gate.js', './src/auth-gate.css', './src/pwa-install.js', './src/ride-animation.js', './src/version-status.js',
@@ -24,6 +26,43 @@ async function cacheRemoteAssets(cache) {
   }));
 }
 
+function versionNumber(name) {
+  const match = String(name).match(new RegExp(`${CACHE_PREFIX}(\\d+)$`));
+  return match ? Number(match[1]) : -1;
+}
+
+async function getRollbackCache() {
+  const keys = await caches.keys();
+  const versions = keys.filter(key => key.startsWith(CACHE_PREFIX)).sort((a,b) => versionNumber(b)-versionNumber(a));
+  return versions[1] || null;
+}
+
+async function setRollbackTarget(cacheName) {
+  const cache = await caches.open(CONTROL_CACHE);
+  await cache.put('./rollback.json', new Response(JSON.stringify({ cacheName }), { headers: { 'Content-Type': 'application/json' } }));
+}
+
+async function clearRollbackTarget() {
+  const cache = await caches.open(CONTROL_CACHE);
+  await cache.delete('./rollback.json');
+}
+
+async function getActiveOverride() {
+  try {
+    const cache = await caches.open(CONTROL_CACHE);
+    const response = await cache.match('./rollback.json');
+    if (!response) return null;
+    const data = await response.json();
+    return data?.cacheName || null;
+  } catch (_) { return null; }
+}
+
+async function pruneOldCaches() {
+  const keys = await caches.keys();
+  const versions = keys.filter(key => key.startsWith(CACHE_PREFIX)).sort((a,b) => versionNumber(b)-versionNumber(a));
+  await Promise.all(versions.slice(3).map(key => caches.delete(key)));
+}
+
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -31,20 +70,30 @@ self.addEventListener('install', event => {
         await cache.addAll(SHELL);
         await cacheRemoteAssets(cache);
       })
-      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key.startsWith('vestope-groomer-v2-') && key !== CACHE_NAME).map(key => caches.delete(key))))
-      .then(() => self.clients.claim())
+    pruneOldCaches().then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('message', event => {
-  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data?.type === 'SKIP_WAITING') {
+    event.waitUntil(clearRollbackTarget().then(() => self.skipWaiting()));
+    return;
+  }
+  if (event.data?.type === 'ROLLBACK') {
+    event.waitUntil((async () => {
+      const rollbackCache = await getRollbackCache();
+      if (!rollbackCache) return;
+      await setRollbackTarget(rollbackCache);
+      await self.clients.claim();
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      clients.forEach(client => client.postMessage({ type: 'ROLLBACK_READY', version: rollbackCache }));
+    })());
+  }
 });
 
 self.addEventListener('fetch', event => {
@@ -57,19 +106,28 @@ self.addEventListener('fetch', event => {
   const isRemoteAsset = url.origin === 'https://raw.githubusercontent.com';
   if (!isSameOrigin && !isEsmModule && !isRemoteAsset) return;
 
-  event.respondWith(
-    caches.match(request).then(cached => {
-      if (cached) return cached;
-      return fetch(request).then(response => {
-        if (response && (response.ok || response.type === 'opaque')) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => {});
-        }
-        return response;
-      }).catch(() => {
-        if (request.mode === 'navigate') return caches.match('./index.html');
-        throw new Error('Offline resource unavailable');
-      });
-    })
-  );
+  event.respondWith((async () => {
+    const overrideName = await getActiveOverride();
+    const preferredCache = overrideName ? await caches.open(overrideName) : await caches.open(CACHE_NAME);
+    const cached = await preferredCache.match(request);
+    if (cached) return cached;
+
+    const anyCached = await caches.match(request);
+    if (anyCached) return anyCached;
+
+    try {
+      const response = await fetch(request);
+      if (response && (response.ok || response.type === 'opaque')) {
+        const copy = response.clone();
+        preferredCache.put(request, copy).catch(() => {});
+      }
+      return response;
+    } catch (_) {
+      if (request.mode === 'navigate') {
+        const fallback = await preferredCache.match('./index.html') || await caches.match('./index.html');
+        if (fallback) return fallback;
+      }
+      throw new Error('Offline resource unavailable');
+    }
+  })());
 });
