@@ -1,126 +1,64 @@
 import { getRidesForDay, saveRide } from './ride-store.js';
+import { addRidePhoto, listRidePhotos, photoMetadataForRide } from './photo-store.js';
+import { DEFAULT_AREA_ID, detectStartLocation } from './services/gps/location-detector.js';
 
 const REPORT_KEY = 'vestope:groomer:phase5-report';
-const QUALITY = [
-  ['excellent', 'Výborná', 'q-excellent'],
-  ['very-good', 'Velmi dobrá', 'q-verygood'],
-  ['passable', 'Sjízdné', 'q-passable'],
-  ['limited', 'Sjízdné s většími omezeními', 'q-limited'],
-  ['bad', 'Nesjízdné', 'q-bad'],
-];
-const SNOW = [
-  ['powder', 'Prachový sníh'],
-  ['soft', 'Měkká bořivá stopa'],
-  ['wet-heavy', 'Mokrý těžký sníh'],
-  ['icy-fast', 'Zledovatělá rychlá stopa'],
-  ['lightly-dirty', 'Málo znečištěná stopa'],
-  ['heavily-dirty', 'Silně znečištěná stopa'],
-  ['firn', 'Starý jarní firn'],
-  ['technical', 'Technický umělý sníh'],
-];
-
+const QUALITY = [['excellent','Výborná','q-excellent'],['very-good','Velmi dobrá','q-verygood'],['passable','Sjízdné','q-passable'],['limited','Sjízdné s většími omezeními','q-limited'],['bad','Nesjízdné','q-bad']];
+const SNOW = [['powder','Prachový sníh'],['soft','Měkká bořivá stopa'],['wet-heavy','Mokrý těžký sníh'],['icy-fast','Zledovatělá rychlá stopa'],['lightly-dirty','Málo znečištěná stopa'],['heavily-dirty','Silně znečištěná stopa'],['firn','Starý jarní firn'],['technical','Technický umělý sníh']];
 let active = false;
 
-function esc(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-}
-
-async function latestRide() {
-  const rides = await getRidesForDay(new Date());
-  return rides.sort((a, b) => Number(b.endedAt || 0) - Number(a.endedAt || 0))[0] || null;
-}
+function esc(value) { return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
+async function latestRide() { const rides = await getRidesForDay(new Date()); return rides.sort((a,b) => Number(b.endedAt||0)-Number(a.endedAt||0))[0] || null; }
 
 function renderForm(ride) {
-  const card = document.querySelector('.welcome-card');
-  if (!card) return;
-  const km = ((Number(ride.distanceM) || 0) / 1000).toFixed(2).replace('.', ',');
+  const card = document.querySelector('.welcome-card'); if (!card) return;
+  const km = ((Number(ride.distanceM)||0)/1000).toFixed(2).replace('.', ',');
   card.className = 'welcome-card report-card';
-  card.innerHTML = `
-    <div class="online-badge"><span></span> ONLINE</div>
-    <div class="eyebrow">JÍZDA DOKONČENA</div>
-    <h1>Jaká byla stopa?</h1>
-    <p class="report-intro">Ještě mi řekni, jak to dneska vypadalo. Zaznamenal jsem ${km} km.</p>
+  card.innerHTML = `<div class="online-badge"><span></span> ONLINE</div><div class="eyebrow">JÍZDA DOKONČENA</div><h1>Jaká byla stopa?</h1><p class="report-intro">Ještě mi řekni, jak to dneska vypadalo. Zaznamenal jsem ${km} km.</p>
     <form id="phase5ReportForm" class="report-form">
-      <section class="report-section">
-        <div class="report-section-title"><span class="report-icon snowflake" aria-hidden="true">❄</span><div><h2>Sněhové podmínky</h2><small>Můžeš vybrat jednu i více možností.</small></div></div>
-        <div class="check-grid">${SNOW.map(([value, label]) => `<label class="check-option"><input type="checkbox" name="snowCondition" value="${value}"><span class="custom-check"></span><span>${label}</span></label>`).join('')}</div>
-      </section>
-      <section class="report-section">
-        <div class="report-section-title"><span class="report-icon track-machine" aria-hidden="true">▰</span><div><h2>Jaká je podle tebe stopa?</h2><small>Vyber jednu variantu.</small></div></div>
-        <div class="quality-grid">${QUALITY.map(([value, label, cls], index) => `<label class="quality-option ${index === 0 ? 'selected' : ''}"><input type="radio" name="trackQuality" value="${value}" ${index === 0 ? 'checked' : ''}><span class="quality-dot ${cls}"></span><span>${label}</span></label>`).join('')}</div>
-      </section>
-      <section class="report-section">
-        <div class="report-section-title"><span class="report-icon track-type" aria-hidden="true">≋</span><div><h2>Druh stopy</h2><small>Co je dnes upravené?</small></div></div>
-        <div class="check-grid track-type-grid">
-          <label class="check-option"><input type="checkbox" name="trackType" value="classic"><span class="custom-check"></span><span>Klasika</span></label>
-          <label class="check-option"><input type="checkbox" name="trackType" value="skate"><span class="custom-check"></span><span>Skate (bruslení)</span></label>
-        </div>
-      </section>
-      <section class="report-section">
-        <label class="note-label" for="phase5Note">Poznámka <span>(nepovinné)</span></label>
-        <textarea id="phase5Note" name="note" rows="3" placeholder="Třeba: mezi Brunstem a Můstkem fouká…"></textarea>
-      </section>
+      <section class="report-section"><div class="report-section-title"><span class="report-icon snowflake" aria-hidden="true">❄</span><div><h2>Sněhové podmínky</h2><small>Můžeš vybrat jednu i více možností.</small></div></div><div class="check-grid">${SNOW.map(([v,l])=>`<label class="check-option"><input type="checkbox" name="snowCondition" value="${v}"><span class="custom-check"></span><span>${l}</span></label>`).join('')}</div></section>
+      <section class="report-section"><div class="report-section-title"><span class="report-icon track-machine" aria-hidden="true">▰</span><div><h2>Jaká je podle tebe stopa?</h2><small>Vyber jednu variantu.</small></div></div><div class="quality-grid">${QUALITY.map(([v,l,c],i)=>`<label class="quality-option ${i===0?'selected':''}"><input type="radio" name="trackQuality" value="${v}" ${i===0?'checked':''}><span class="quality-dot ${c}"></span><span>${l}</span></label>`).join('')}</div></section>
+      <section class="report-section"><div class="report-section-title"><span class="report-icon track-type" aria-hidden="true">≋</span><div><h2>Druh stopy</h2><small>Co je dnes upravené?</small></div></div><div class="check-grid track-type-grid"><label class="check-option"><input type="checkbox" name="trackType" value="classic"><span class="custom-check"></span><span>Klasika</span></label><label class="check-option"><input type="checkbox" name="trackType" value="skate"><span class="custom-check"></span><span>Skate (bruslení)</span></label></div></section>
+      <section class="report-section"><label class="note-label" for="phase5Note">Poznámka <span>(nepovinné)</span></label><textarea id="phase5Note" name="note" rows="3" placeholder="Třeba: mezi Brunstem a Můstkem fouká…"></textarea></section>
+      <section class="report-section photo-report-section"><div class="report-section-title"><span class="report-icon photo-report-icon" aria-hidden="true">📷</span><div><h2>Fotky</h2><small>Fotky můžeš přidat i teď na konci jízdy.</small></div></div><div class="photo-report-row"><button type="button" class="photo-add-button" id="endPhotoButton">📷 Přidat fotku</button><input id="endPhotoInput" class="photo-input" type="file" accept="image/*" capture="environment"></div><div class="photo-count" id="photoCount"></div></section>
       <div class="report-actions"><button class="secondary report-back" type="button" id="reportBack">ZPĚT</button><button class="save-report" type="submit">ULOŽIT REPORT</button></div>
     </form>`;
-
-  card.querySelectorAll('input[name="trackQuality"]').forEach((input) => input.addEventListener('change', () => {
-    card.querySelectorAll('.quality-option').forEach((option) => option.classList.toggle('selected', option.querySelector('input')?.checked));
-  }));
-  card.querySelector('#reportBack')?.addEventListener('click', () => finishWithoutReport(ride));
-  card.querySelector('#phase5ReportForm')?.addEventListener('submit', (event) => submitReport(event, ride));
+  refreshPhotoCount(ride.id);
+  card.querySelectorAll('input[name="trackQuality"]').forEach(input=>input.addEventListener('change',()=>card.querySelectorAll('.quality-option').forEach(o=>o.classList.toggle('selected',o.querySelector('input')?.checked))));
+  card.querySelector('#reportBack')?.addEventListener('click',()=>finishWithoutReport(ride));
+  card.querySelector('#phase5ReportForm')?.addEventListener('submit',(event)=>submitReport(event,ride));
+  card.querySelector('#endPhotoButton')?.addEventListener('click',()=>card.querySelector('#endPhotoInput')?.click());
+  card.querySelector('#endPhotoInput')?.addEventListener('change',(event)=>handleEndPhoto(event,ride));
 }
 
-async function submitReport(event, ride) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const button = form.querySelector('.save-report');
-  button.disabled = true;
-  button.textContent = 'UKLÁDÁM…';
-  const report = {
-    schemaVersion: 1,
-    createdAt: Date.now(),
-    trackQuality: form.querySelector('input[name="trackQuality"]:checked')?.value || 'excellent',
-    snowConditions: [...form.querySelectorAll('input[name="snowCondition"]:checked')].map((input) => input.value),
-    trackTypes: [...form.querySelectorAll('input[name="trackType"]:checked')].map((input) => input.value),
-    note: form.querySelector('#phase5Note')?.value.trim() || '',
-    photos: [],
-  };
-  await saveRide({ ...ride, report });
-  sessionStorage.setItem(REPORT_KEY, 'saved');
-  showSaved(report, ride);
+async function handleEndPhoto(event, ride) {
+  const file=event.target.files?.[0]; event.target.value=''; if(!file) return;
+  const button=document.querySelector('#endPhotoButton'); if(button){button.disabled=true;button.textContent='UKLÁDÁM FOTKU…';}
+  try {
+    const position=await getCurrentPosition(ride.trackPoints?.at(-1)||null);
+    const nearestTrackPoint=findNearestTrackPoint(position,ride.trackPoints||[]);
+    const location=position?await detectStartLocation(position,DEFAULT_AREA_ID):null;
+    await addRidePhoto({rideId:ride.id,file,capturedAt:Date.now(),position,nearestTrackPoint,nearestKnownStart:location?.nearestStart?{id:location.nearestStart.id,name:location.nearestStart.name,distanceM:location.distanceToNearestStartM}:null});
+    await refreshPhotoCount(ride.id);
+  } catch(error) { const count=document.querySelector('#photoCount'); if(count) count.textContent=error?.message||'Fotku se nepodařilo uložit.'; }
+  finally { const b=document.querySelector('#endPhotoButton'); if(b){b.disabled=false;b.textContent='📷 Přidat fotku';} }
 }
 
-function showSaved(report, ride) {
-  const card = document.querySelector('.welcome-card');
-  if (!card) return;
-  const quality = QUALITY.find(([value]) => value === report.trackQuality)?.[1] || 'Výborná';
-  card.className = 'welcome-card report-saved-card';
-  card.innerHTML = `<div class="online-badge"><span></span> ONLINE</div><div class="thanks-icon">❄</div><div class="eyebrow">REPORT ULOŽENÝ</div><h1>Paráda!</h1><p>Stopa je zapsaná. Díky za dnešní práci.</p><div class="report-saved"><strong>${esc(quality)}</strong><span>${report.snowConditions.length} sněhových podmínek · ${report.trackTypes.length} typy stopy</span></div><button class="phase-button summary-button" id="reportDone">HOTOVO</button>`;
-  card.querySelector('#reportDone')?.addEventListener('click', () => location.reload());
+async function refreshPhotoCount(rideId) { const photos=await listRidePhotos(rideId); const count=document.querySelector('#photoCount'); if(count) count.textContent=photos.length?`${photos.length} fot${photos.length===1?'ka':photos.length<5?'ky':'ek'} připravena k reportu.`:'Zatím bez fotek.'; return photos; }
+
+async function submitReport(event,ride) {
+  event.preventDefault(); const form=event.currentTarget,button=form.querySelector('.save-report'); button.disabled=true; button.textContent='UKLÁDÁM…';
+  const photos=await listRidePhotos(ride.id);
+  const report={schemaVersion:1,createdAt:Date.now(),trackQuality:form.querySelector('input[name="trackQuality"]:checked')?.value||'excellent',snowConditions:[...form.querySelectorAll('input[name="snowCondition"]:checked')].map(i=>i.value),trackTypes:[...form.querySelectorAll('input[name="trackType"]:checked')].map(i=>i.value),note:form.querySelector('#phase5Note')?.value.trim()||'',photos:photoMetadataForRide(photos)};
+  await saveRide({...ride,photos:report.photos,report}); sessionStorage.setItem(REPORT_KEY,'saved'); showSaved(report,ride);
 }
 
-async function finishWithoutReport(ride) {
-  const card = document.querySelector('.welcome-card');
-  if (!card) return;
-  card.innerHTML = `<div class="online-badge"><span></span> ONLINE</div><div class="eyebrow">JÍZDA UKONČENA</div><h1>Hotovo.</h1><p>Jízda je uložená. Report můžeš doplnit později.</p><button class="phase-button summary-button" id="reportDone">HOTOVO</button>`;
-  card.querySelector('#reportDone')?.addEventListener('click', () => location.reload());
-}
+function showSaved(report,ride) { const card=document.querySelector('.welcome-card'); if(!card)return; const quality=QUALITY.find(([v])=>v===report.trackQuality)?.[1]||'Výborná'; card.className='welcome-card report-saved-card'; card.innerHTML=`<div class="online-badge"><span></span> ONLINE</div><div class="thanks-icon">❄</div><div class="eyebrow">REPORT ULOŽENÝ</div><h1>Paráda!</h1><p>Stopa je zapsaná. Díky za dnešní práci.</p><div class="report-saved"><strong>${esc(quality)}</strong><span>${report.snowConditions.length} sněhových podmínek · ${report.trackTypes.length} typy stopy · ${report.photos.length} fotek</span></div><button class="phase-button summary-button" id="reportDone">HOTOVO</button>`; card.querySelector('#reportDone')?.addEventListener('click',()=>location.reload()); }
+function finishWithoutReport(ride) { const card=document.querySelector('.welcome-card'); if(!card)return; card.innerHTML=`<div class="online-badge"><span></span> ONLINE</div><div class="eyebrow">JÍZDA UKONČENA</div><h1>Hotovo.</h1><p>Jízda je uložená. Report můžeš doplnit později.</p><button class="phase-button summary-button" id="reportDone">HOTOVO</button>`; card.querySelector('#reportDone')?.addEventListener('click',()=>location.reload()); }
 
-export async function showPhase5Report() {
-  if (active) return;
-  active = true;
-  const ride = await latestRide();
-  if (!ride) { active = false; return; }
-  renderForm(ride);
-}
+function getCurrentPosition(fallback) { if(!('geolocation' in navigator)) return Promise.resolve(fallback); return new Promise(resolve=>{let done=false;const finish=v=>{if(done)return;done=true;resolve(v||fallback||null)};const t=setTimeout(()=>finish(fallback),5000);navigator.geolocation.getCurrentPosition(p=>{clearTimeout(t);finish(p)},()=>{clearTimeout(t);finish(fallback)},{enableHighAccuracy:true,timeout:4500,maximumAge:5000});}); }
+function findNearestTrackPoint(position,points) { if(!position||!points.length)return null; const a={latitude:Number(position.coords?.latitude??position.latitude),longitude:Number(position.coords?.longitude??position.longitude)}; let nearest=null,best=Infinity; for(const p of points){const d=haversine(a,p);if(d<best){best=d;nearest={...p,distanceM:Math.round(d)}}} return nearest; }
+function haversine(a,b){const r=6371000,p=Math.PI/180,lat1=a.latitude*p,lat2=b.latitude*p,dLat=(b.latitude-a.latitude)*p,dLon=(b.longitude-a.longitude)*p,h=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;return 2*r*Math.asin(Math.sqrt(h));}
 
-export function installPhase5ReportForm() {
-  const observer = new MutationObserver(() => {
-    if (active) return;
-    const heading = document.querySelector('.welcome-card h1');
-    if (heading?.textContent?.trim() === 'Hotovo.') {
-      showPhase5Report();
-    }
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-}
+export async function showPhase5Report() { if(active)return; active=true; const ride=await latestRide(); if(!ride){active=false;return;} renderForm(ride); }
+export function installPhase5ReportForm() { const observer=new MutationObserver(()=>{if(active)return;const heading=document.querySelector('.welcome-card h1');if(heading?.textContent?.trim()==='Hotovo.')showPhase5Report();});observer.observe(document.body,{childList:true,subtree:true}); }
