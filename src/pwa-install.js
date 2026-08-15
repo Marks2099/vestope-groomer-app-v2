@@ -43,15 +43,27 @@ function installUpdateSupport() {
   const wasControlled = Boolean(navigator.serviceWorker.controller); let updateReady = false;
   const showUpdate = () => {
     if (!wasControlled || updateReady || navigator.onLine === false) return;
-    updateReady = true; document.querySelector('.app-update-banner')?.remove();
-    const banner = document.createElement('div'); banner.className = 'app-update-banner';
-    banner.innerHTML = `<div><strong>Nová verze VeStope je připravená.</strong><small>Aktualizace je dostupná, protože jsi online.</small></div><button type="button" id="appUpdateButton">AKTUALIZOVAT</button><button type="button" class="app-update-close" aria-label="Později">×</button>`;
-    document.body.appendChild(banner);
-    banner.querySelector('#appUpdateButton').addEventListener('click', () => {
-      if (document.querySelector('.ride-card')) { banner.querySelector('small').textContent = 'Nejdřív dokonči jízdu. Potom můžeš aplikaci bezpečně aktualizovat.'; return; }
-      location.reload();
+    updateReady = true;
+    document.querySelector('.app-update-modal')?.remove();
+    const modal = document.createElement('div'); modal.className = 'app-update-modal';
+    modal.innerHTML = `<div class="app-update-card" role="dialog" aria-modal="true" aria-labelledby="appUpdateTitle">
+      <div class="app-update-icon" aria-hidden="true"><span>↻</span></div>
+      <div class="eyebrow">AKTUALIZACE APLIKACE</div>
+      <h2 id="appUpdateTitle">Nová verze je připravená.</h2>
+      <p>VeStope má k dispozici aktualizaci. Pro pokračování je potřeba aplikaci aktualizovat.</p>
+      <button type="button" id="appUpdateButton">AKTUALIZOVAT</button>
+    </div>`;
+    document.body.appendChild(modal);
+    const updateButton = modal.querySelector('#appUpdateButton');
+    updateButton.addEventListener('click', async () => {
+      updateButton.disabled = true;
+      updateButton.textContent = 'AKTUALIZUJI…';
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration?.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        else location.reload();
+      } catch (_) { location.reload(); }
     });
-    banner.querySelector('.app-update-close').addEventListener('click', () => banner.remove());
   };
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (wasControlled) showUpdate(); });
   navigator.serviceWorker.ready.then(registration => {
@@ -66,6 +78,6 @@ export function setOfflineAuthorization(enabled) { try { if (enabled) localStora
 function installStyles() {
   if (document.querySelector(`#${STYLE_ID}`)) return;
   const style = document.createElement('style'); style.id = STYLE_ID;
-  style.textContent = `.pwa-install-button{display:inline-flex;align-items:center;gap:6px;border:1px solid #d5e3ef;background:#fff;color:#1769aa;padding:10px 13px;border-radius:999px;font-weight:900;font-size:11px;cursor:pointer;letter-spacing:.03em;white-space:nowrap;box-shadow:0 8px 22px rgba(25,62,105,.08)}.pwa-install-button:hover{background:#f5faff}.pwa-install-button:active{transform:scale(.98)}.pwa-install-button[hidden]{display:none}.ui-icon-wrap{display:inline-grid;place-items:center;font-size:17px;line-height:1}.pwa-help-modal{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(17,34,53,.35);backdrop-filter:blur(6px)}.pwa-help-card{position:relative;width:min(100%,420px);padding:30px 24px 24px;border-radius:24px;background:#fff;box-shadow:0 24px 70px rgba(25,62,105,.24)}.pwa-help-card h2{margin:8px 0;color:#172235;font-size:28px}.pwa-help-card p{color:#617287;line-height:1.55}.pwa-help-close{position:absolute;right:14px;top:12px;width:36px;height:36px;border:0;border-radius:50%;background:#f1f6fa;color:#52657a;font-size:24px;cursor:pointer}.pwa-help-ok{width:100%;margin-top:12px;border:0;border-radius:14px;padding:13px;background:#1769aa;color:#fff;font-weight:900;cursor:pointer}.app-update-banner{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:5000;width:min(calc(100% - 24px),520px);display:flex;align-items:center;gap:12px;padding:13px 14px 13px 16px;border:1px solid #cfe2f0;border-radius:17px;background:#fff;box-shadow:0 18px 50px rgba(25,62,105,.22);text-align:left}.app-update-banner>div{min-width:0;flex:1}.app-update-banner strong,.app-update-banner small{display:block}.app-update-banner strong{font-size:13px;color:#172235}.app-update-banner small{margin-top:3px;color:#6a7c91;font-size:11px;line-height:1.35}.app-update-banner button{border:0;border-radius:11px;padding:10px 12px;background:#1769aa;color:#fff;font-size:11px;font-weight:900;white-space:nowrap;cursor:pointer}.app-update-banner .app-update-close{width:30px;height:30px;padding:0;background:#f1f6fa;color:#52657a;font-size:20px}.online-badge.offline{color:#657487;background:#f3f6f9}.online-badge.offline span{background:#8a97a6;box-shadow:0 0 0 3px rgba(138,151,166,.12)}.is-offline .online-badge.offline{box-shadow:0 6px 18px rgba(25,62,105,.08)}@media(max-width:600px){.pwa-install-button{padding:9px 10px;font-size:10px}.ui-icon-wrap{font-size:15px}.app-update-banner{bottom:max(12px,env(safe-area-inset-bottom));padding:12px}.app-update-banner button{padding:10px 10px;font-size:10px}}`;
+  style.textContent = `.pwa-install-button{display:inline-flex;align-items:center;gap:6px;border:1px solid #d5e3ef;background:#fff;color:#1769aa;padding:10px 13px;border-radius:999px;font-weight:900;font-size:11px;cursor:pointer;letter-spacing:.03em;white-space:nowrap;box-shadow:0 8px 22px rgba(25,62,105,.08)}.pwa-install-button:hover{background:#f5faff}.pwa-install-button:active{transform:scale(.98)}.pwa-install-button[hidden]{display:none}.ui-icon-wrap{display:inline-grid;place-items:center;font-size:17px;line-height:1}.pwa-help-modal{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(17,34,53,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}.pwa-help-card{position:relative;width:min(100%,420px);padding:30px 24px 24px;border-radius:24px;background:#fff;box-shadow:0 24px 70px rgba(25,62,105,.24)}.pwa-help-card h2{margin:8px 0;color:#172235;font-size:28px}.pwa-help-card p{color:#617287;line-height:1.55}.pwa-help-close{position:absolute;right:14px;top:12px;width:36px;height:36px;border:0;border-radius:50%;background:#f1f6fa;color:#52657a;font-size:24px;cursor:pointer}.pwa-help-ok{width:100%;margin-top:12px;border:0;border-radius:14px;padding:13px;background:#1769aa;color:#fff;font-weight:900;cursor:pointer}.app-update-modal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(13,28,45,.52);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);touch-action:none}.app-update-card{width:min(100%,390px);box-sizing:border-box;padding:32px 26px 26px;border:1px solid #d7e7f2;border-radius:28px;background:#fff;box-shadow:0 28px 90px rgba(13,35,58,.34);text-align:center}.app-update-icon{width:58px;height:58px;margin:0 auto 18px;border-radius:18px;background:#e9f5ff;color:#1769aa;display:grid;place-items:center;font-size:30px;font-weight:800}.app-update-icon span{display:block;line-height:1}.app-update-card .eyebrow{color:#6c8198;font-weight:900;letter-spacing:.18em;font-size:11px}.app-update-card h2{margin:9px 0 10px;color:#172235;font-size:27px;line-height:1.08}.app-update-card p{margin:0;color:#61758d;font-size:15px;line-height:1.5}.app-update-card #appUpdateButton{width:100%;margin-top:24px;border:0;border-radius:16px;padding:15px;background:#1769aa;color:#fff;font-size:14px;font-weight:900;letter-spacing:.04em;cursor:pointer;box-shadow:0 10px 24px rgba(23,105,170,.2)}.app-update-card #appUpdateButton:disabled{opacity:.72;cursor:wait}.online-badge.offline{color:#657487;background:#f3f6f9}.online-badge.offline span{background:#8a97a6;box-shadow:0 0 0 3px rgba(138,151,166,.12)}.is-offline .online-badge.offline{box-shadow:0 6px 18px rgba(25,62,105,.08)}@media(max-width:600px){.pwa-install-button{padding:9px 10px;font-size:10px}.ui-icon-wrap{font-size:15px}.app-update-card{padding:28px 22px 22px;border-radius:24px}.app-update-card h2{font-size:25px}}`;
   document.head.appendChild(style);
 }
