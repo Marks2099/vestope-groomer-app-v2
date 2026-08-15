@@ -9,84 +9,25 @@ export class RideEngine {
     this.lastPosition = null; this.trackPoints = []; this.totalDistanceM = 0;
     this.startedAt = 0; this.pausedAt = 0; this.pausedDurationMs = 0;
     this.isRunning = false; this.isPaused = false; this.lastError = null; this.tickId = null;
+    this.diagnostics = { visibilityEvents: [], gpsErrors: [], watchRestarts: 0, gpsCallbacks: 0 };
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
     document.addEventListener('visibilitychange', this.handleVisibilityChange);
   }
-  start(initialPosition = null) {
-    if (this.isRunning) return;
-    this.reset(); this.startedAt = Date.now(); this.isRunning = true; this.isPaused = false;
-    this.lastPosition = this.normalizePosition(initialPosition); if (this.lastPosition) this.trackPoints.push(this.lastPosition);
-    this.startGpsWatch(); this.startClock(); this.emit();
-  }
-  restoreFromRecord(record) {
-    this.destroy();
-    this.reset();
-    const points = Array.isArray(record?.trackPoints) ? record.trackPoints : [];
-    this.trackPoints = points.map((point) => ({ ...point }));
-    this.lastPosition = this.trackPoints.at(-1) || null;
-    this.totalDistanceM = Math.max(0, Number(record?.distanceM) || 0);
-    this.startedAt = Number(record?.startedAt) || Date.now();
-    this.pausedDurationMs = Math.max(0, Number(record?.pausedDurationMs) || 0) + Math.max(0, Date.now() - (Number(record?.endedAt) || Date.now()));
-    this.pausedAt = 0;
-    this.isRunning = true;
-    this.isPaused = false;
-    this.lastError = null;
-    this.startGpsWatch();
-    this.startClock();
-    this.emit();
-  }
+  start(initialPosition = null) { if (this.isRunning) return; this.reset(); this.startedAt = Date.now(); this.isRunning = true; this.isPaused = false; this.lastPosition = this.normalizePosition(initialPosition); if (this.lastPosition) this.trackPoints.push(this.lastPosition); this.startGpsWatch(); this.startClock(); this.emit(); }
+  restoreFromRecord(record) { this.destroy(); this.reset(); const points = Array.isArray(record?.trackPoints) ? record.trackPoints : []; this.trackPoints = points.map((point) => ({ ...point })); this.lastPosition = this.trackPoints.at(-1) || null; this.totalDistanceM = Math.max(0, Number(record?.distanceM) || 0); this.startedAt = Number(record?.startedAt) || Date.now(); this.pausedDurationMs = Math.max(0, Number(record?.pausedDurationMs) || 0) + Math.max(0, Date.now() - (Number(record?.endedAt) || Date.now())); this.isRunning = true; this.isPaused = false; this.startGpsWatch(); this.startClock(); this.emit(); }
   pause() { if (!this.isRunning || this.isPaused) return; this.pausedAt = Date.now(); this.isPaused = true; this.stopGpsWatch(); this.emit(); }
   resume() { if (!this.isRunning || !this.isPaused) return; this.pausedDurationMs += Date.now() - this.pausedAt; this.pausedAt = 0; this.isPaused = false; this.lastPosition = null; this.startGpsWatch(); this.emit(); }
-  stop() {
-    if (!this.isRunning) return this.getSnapshot();
-    const endedAt = Date.now(), pausedExtra = this.isPaused ? endedAt - this.pausedAt : 0;
-    const totalPausedDurationMs = this.pausedDurationMs + pausedExtra;
-    const activeTimeMs = Math.max(0, endedAt - this.startedAt - totalPausedDurationMs);
-    this.stopGpsWatch(); this.stopClock(); this.isRunning = false; this.isPaused = false;
-    const result = { distanceM: this.totalDistanceM, activeTimeMs, pausedDurationMs: totalPausedDurationMs, startedAt: this.startedAt, endedAt, trackPoints: this.trackPoints.map((point) => ({ ...point })) };
-    this.emit(); return result;
-  }
+  stop() { if (!this.isRunning) return this.getSnapshot(); const endedAt = Date.now(), pausedExtra = this.isPaused ? endedAt - this.pausedAt : 0; const totalPausedDurationMs = this.pausedDurationMs + pausedExtra; const activeTimeMs = Math.max(0, endedAt - this.startedAt - totalPausedDurationMs); this.stopGpsWatch(); this.stopClock(); this.isRunning = false; this.isPaused = false; const result = { distanceM: this.totalDistanceM, activeTimeMs, pausedDurationMs: totalPausedDurationMs, startedAt: this.startedAt, endedAt, trackPoints: this.trackPoints.map((point) => ({ ...point })), diagnostics: { ...this.diagnostics, stoppedAt: endedAt } }; this.emit(); return result; }
   destroy() { this.stopGpsWatch(); this.stopClock(); document.removeEventListener('visibilitychange', this.handleVisibilityChange); }
-  reset() { this.stopGpsWatch(); this.stopClock(); this.lastPosition = null; this.trackPoints = []; this.totalDistanceM = 0; this.startedAt = 0; this.pausedAt = 0; this.pausedDurationMs = 0; this.lastError = null; }
-  startGpsWatch() {
-    if (!('geolocation' in navigator)) { this.handleGpsError({ code: 0 }); return; }
-    if (this.watchId !== null) return;
-    this.watchId = navigator.geolocation.watchPosition((position) => this.handlePosition(position), (error) => this.handleGpsError(error), GPS_OPTIONS);
-  }
+  reset() { this.stopGpsWatch(); this.stopClock(); this.lastPosition = null; this.trackPoints = []; this.totalDistanceM = 0; this.startedAt = 0; this.pausedAt = 0; this.pausedDurationMs = 0; this.lastError = null; this.diagnostics = { visibilityEvents: [], gpsErrors: [], watchRestarts: 0, gpsCallbacks: 0 }; }
+  startGpsWatch() { if (!('geolocation' in navigator)) { this.handleGpsError({ code: 0 }); return; } if (this.watchId !== null) return; this.diagnostics.watchRestarts += 1; this.watchId = navigator.geolocation.watchPosition((position) => this.handlePosition(position), (error) => this.handleGpsError(error), GPS_OPTIONS); }
   stopGpsWatch() { if (this.watchId !== null && 'geolocation' in navigator) navigator.geolocation.clearWatch(this.watchId); this.watchId = null; }
-  handleVisibilityChange() {
-    if (!this.isRunning || this.isPaused || document.visibilityState !== 'visible') return;
-    // iOS Safari/PWA may suspend a geolocation watch while the app is backgrounded.
-    // When the app returns, restart the watch and take one fresh position immediately.
-    this.stopGpsWatch();
-    this.startGpsWatch();
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => this.handlePosition(position),
-        (error) => this.handleGpsError(error),
-        GPS_OPTIONS
-      );
-    }
-  }
+  handleVisibilityChange() { const timestamp = Date.now(); this.diagnostics.visibilityEvents.push({ state: document.visibilityState, timestamp }); if (!this.isRunning || this.isPaused || document.visibilityState !== 'visible') return; this.stopGpsWatch(); this.startGpsWatch(); if ('geolocation' in navigator) navigator.geolocation.getCurrentPosition((position) => this.handlePosition(position), (error) => this.handleGpsError(error), GPS_OPTIONS); }
   startClock() { this.stopClock(); this.tickId = window.setInterval(() => this.emit(), 1000); }
   stopClock() { if (this.tickId !== null) window.clearInterval(this.tickId); this.tickId = null; }
-  handlePosition(position) {
-    if (!this.isRunning || this.isPaused) return;
-    const current = this.normalizePosition(position); if (!current) return;
-    this.lastError = null;
-    if (this.lastPosition) {
-      const segment = haversineMeters(this.lastPosition, current), accuracy = Math.max(this.lastPosition.accuracy || 0, current.accuracy || 0);
-      if (accuracy <= MAX_ACCEPTED_ACCURACY_M && segment <= MAX_SEGMENT_DISTANCE_M) { this.totalDistanceM += segment; this.trackPoints.push(current); }
-    } else this.trackPoints.push(current);
-    this.lastPosition = current; this.emit();
-  }
-  handleGpsError(error) { this.lastError = gpsErrorMessage(error); if (typeof this.onGpsError === 'function') this.onGpsError(this.lastError); this.emit(); }
-  normalizePosition(position) {
-    if (!position?.coords) return null;
-    const { latitude, longitude, accuracy } = position.coords;
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-    return { latitude, longitude, accuracy: Number.isFinite(accuracy) ? accuracy : 0, timestamp: position.timestamp || Date.now() };
-  }
+  handlePosition(position) { if (!this.isRunning || this.isPaused) return; const current = this.normalizePosition(position); if (!current) return; this.diagnostics.gpsCallbacks += 1; this.lastError = null; if (this.lastPosition) { const segment = haversineMeters(this.lastPosition, current), accuracy = Math.max(this.lastPosition.accuracy || 0, current.accuracy || 0); if (accuracy <= MAX_ACCEPTED_ACCURACY_M && segment <= MAX_SEGMENT_DISTANCE_M) { this.totalDistanceM += segment; this.trackPoints.push(current); } } else this.trackPoints.push(current); this.lastPosition = current; this.emit(); }
+  handleGpsError(error) { const message = gpsErrorMessage(error); this.diagnostics.gpsErrors.push({ code: Number(error?.code)||0, timestamp: Date.now(), message }); this.lastError = message; if (typeof this.onGpsError === 'function') this.onGpsError(message); this.emit(); }
+  normalizePosition(position) { if (!position?.coords) return null; const { latitude, longitude, accuracy } = position.coords; if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null; return { latitude, longitude, accuracy: Number.isFinite(accuracy) ? accuracy : 0, timestamp: position.timestamp || Date.now() }; }
   getActiveTimeMs(now = Date.now()) { if (!this.startedAt) return 0; const pausedNow = this.isPaused ? now - this.pausedAt : 0; return Math.max(0, now - this.startedAt - this.pausedDurationMs - pausedNow); }
   getTrackPoints() { return this.trackPoints.map((point) => ({ ...point })); }
   getSnapshot() { return { isRunning: this.isRunning, isPaused: this.isPaused, distanceM: this.totalDistanceM, activeTimeMs: this.getActiveTimeMs(), position: this.lastPosition, trackPointCount: this.trackPoints.length, gpsError: this.lastError }; }
