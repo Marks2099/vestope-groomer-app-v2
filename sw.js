@@ -1,7 +1,6 @@
-const CACHE_NAME = 'vestope-groomer-v2-shell-v12';
+const CACHE_NAME = 'vestope-groomer-v2-shell-v13';
 const SHELL = [
-  './', './index.html', './styles.css', './manifest.webmanifest',
-  './assets/groomer.svg', './assets/icons/icon-192.svg', './assets/icons/icon-512.svg',
+  './', './index.html', './styles.css', './manifest.webmanifest', './assets/pwa-icon.svg',
   './app.js', './src/auth-gate.js', './src/auth-gate.css', './src/pwa-install.js',
   './src/groomer-profile.js', './src/phase5-report-form.js', './src/phase5-report.css',
   './src/phase6-ride-photo.js', './src/phase6-photo.css', './src/phase8-animation.css',
@@ -9,10 +8,28 @@ const SHELL = [
   './src/ride-store.js', './src/report-scheduler.js', './src/services/gps/location-detector.js'
 ];
 
+const REMOTE_ASSETS = [
+  'https://raw.githubusercontent.com/Marks2099/vestope-groomer-app/main/logo_vestope.cz.png',
+  'https://raw.githubusercontent.com/Marks2099/vestope-groomer-app/main/vestope-groomer-background.webp'
+];
+
+async function cacheRemoteAssets(cache) {
+  await Promise.all(REMOTE_ASSETS.map(async url => {
+    try {
+      const request = new Request(url, { mode: 'no-cors', cache: 'no-store' });
+      const response = await fetch(request);
+      if (response) await cache.put(request, response.clone());
+    } catch (_) {}
+  }));
+}
+
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(SHELL))
+      .then(async cache => {
+        await cache.addAll(SHELL);
+        await cacheRemoteAssets(cache);
+      })
       .then(() => self.skipWaiting())
   );
 });
@@ -32,7 +49,8 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   const isSameOrigin = url.origin === self.location.origin;
   const isEsmModule = url.origin === 'https://esm.sh';
-  if (!isSameOrigin && !isEsmModule) return;
+  const isRemoteAsset = url.origin === 'https://raw.githubusercontent.com';
+  if (!isSameOrigin && !isEsmModule && !isRemoteAsset) return;
 
   event.respondWith(
     caches.match(request).then(cached => {
