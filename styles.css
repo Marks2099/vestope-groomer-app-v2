@@ -7,6 +7,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
 body { min-height: 100vh; }
+button { font: inherit; }
 
 .app-shell {
   min-height: 100vh;
@@ -165,10 +166,127 @@ p {
   font-weight: 900;
   cursor: pointer;
   box-shadow: 0 14px 35px rgba(32,181,90,.24);
+  transition: transform .16s ease, box-shadow .16s ease;
 }
 
+.phase-button:hover { transform: translateY(-2px); box-shadow: 0 18px 40px rgba(32,181,90,.28); }
+.phase-button:active { transform: translateY(1px); }
 .phase-button:disabled { cursor: default; opacity: .75; }
 .phase-secondary { margin-top: 10px; }
+.secondary { border: 1px solid #d6e0ea; background: #fff; color: #31445b; padding: 12px 18px; border-radius: 12px; cursor: pointer; }
+
+/* Phase 2 – live ride */
+.ride-card { justify-content: flex-start; padding-top: 78px; }
+.ride-header { width: 100%; }
+.ride-header h1 { margin-top: 10px; }
+
+.ride-live-stats {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.live-stat {
+  min-height: 112px;
+  padding: 18px 12px;
+  border: 1px solid #dbe7f0;
+  border-radius: 20px;
+  background: #f7fbfe;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.live-stat-icon { font-size: 25px; color: #1769aa; line-height: 1; margin-bottom: 5px; }
+.live-stat strong { font-size: 30px; line-height: 1.05; letter-spacing: -.03em; color: #172235; }
+.live-stat small { margin-top: 4px; color: #6a7c91; font-size: 13px; font-weight: 700; }
+
+.ride-state {
+  margin-top: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+
+.ride-state.running { color: #14743b; background: #eaf9ef; }
+.ride-state.paused { color: #7a5909; background: #fff6dc; }
+.ride-state-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+.ride-gps-warning {
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px 13px;
+  border-radius: 12px;
+  background: #fff8e9;
+  border: 1px solid #f0dfaa;
+  color: #75520b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ride-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.ride-action {
+  min-height: 58px;
+  border: 0;
+  border-radius: 16px;
+  font-weight: 900;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 12px 14px;
+}
+
+.pause-action { background: #edf6fd; color: #1769aa; border: 1px solid #d4e7f6; }
+.stop-action { background: #fff0ef; color: #a3312a; border: 1px solid #f0cfcb; }
+.secondary-action { background: #f4f7fa; color: #44566b; border: 1px solid #dbe3eb; }
+
+.ride-location {
+  width: 100%;
+  margin-top: 16px;
+  color: #7b8da1;
+  font-size: 11px;
+}
+
+.summary-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.summary-grid > div {
+  padding: 18px 10px;
+  border-radius: 18px;
+  background: #f5f9fc;
+  border: 1px solid #dce8f1;
+}
+
+.summary-grid strong,
+.summary-grid small { display: block; }
+.summary-grid strong { font-size: 29px; color: #172235; }
+.summary-grid small { margin-top: 3px; color: #6d7e91; font-size: 12px; font-weight: 700; }
+.summary-grid.compact { margin-top: 24px; }
+.summary-note { margin-top: 18px; }
+.summary-button { width: 175px; height: 175px; font-size: 20px; }
+
+.stop-confirm-card { padding-top: 78px; }
+.confirm-actions { width: 100%; display: grid; gap: 10px; margin-top: 24px; }
+.confirm-actions .ride-action { width: 100%; }
 
 footer {
   position: absolute;
@@ -193,22 +311,18 @@ footer {
     padding: 58px 22px 42px;
   }
 
-  .online-badge {
-    top: 14px;
-    right: 14px;
-    font-size: 12px;
-    padding: 8px 12px;
-  }
-
-  .brand-logo {
-    width: min(86%, 330px);
-    margin-bottom: 22px;
-  }
-
+  .online-badge { top: 14px; right: 14px; font-size: 12px; padding: 8px 12px; }
+  .brand-logo { width: min(86%, 330px); margin-bottom: 22px; }
   .phase-button { width: 175px; height: 175px; font-size: 21px; }
+  .ride-card { padding-top: 66px; }
+  .ride-live-stats { margin-top: 24px; }
+  .live-stat { min-height: 100px; }
+  .live-stat strong { font-size: 26px; }
+  .ride-action { min-height: 54px; font-size: 13px; }
   footer { bottom: max(10px, env(safe-area-inset-bottom)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .spinner { animation: none; }
+  .phase-button { transition: none; }
 }
