@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" href="./assets/pwa-icon.svg">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./src/mobile-ux.css">
   <link rel="stylesheet" href="./src/phase5-report.css">
   <link rel="stylesheet" href="./src/phase6-photo.css">
   <link rel="stylesheet" href="./src/phase8-animation.css">
@@ -28,9 +29,7 @@
     <footer>VeStope.cz – Evidence a monitoring rolbařů</footer>
   </main>
   <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
-    }
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
   </script>
   <script type="module" src="./src/auth-gate.js"></script>
 </body>
