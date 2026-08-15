@@ -1,4 +1,4 @@
-const APP_VERSION = '2.2.4';
+const APP_VERSION = '2.2.5';
 const VERSION_FILE = './version.json';
 const STYLE_ID = 'vestope-version-status-style';
 const BAR_ID = 'vestope-global-version-bar';
@@ -18,6 +18,4 @@ function render(status=lastStatus){const bar=ensureBar();const map={current:['âœ
 function scheduleRender(){if(renderQueued)return;renderQueued=true;queueMicrotask(()=>{renderQueued=false;render()})}
 async function checkVersion(){if(!navigator.onLine){lastStatus='offline';render();return}lastStatus='checking';render();try{const response=await fetch(`${VERSION_FILE}?check=${Date.now()}`,{cache:'no-store'});if(!response.ok)throw new Error('version check failed');const remote=await response.json();lastStatus=String(remote.version)===APP_VERSION?'current':'update'}catch(_){lastStatus=navigator.onLine?'checking':'offline'}render()}
 installStyles();render();window.addEventListener('online',checkVersion);window.addEventListener('offline',()=>{lastStatus='offline';render()});setTimeout(checkVersion,250);setInterval(checkVersion,5*60*1000);
-/* App phases replace #app.innerHTML. The version bar lives outside #app,
-   so it remains visible regardless of the current phase. */
 new MutationObserver(scheduleRender).observe(document.body,{childList:true,subtree:true});
