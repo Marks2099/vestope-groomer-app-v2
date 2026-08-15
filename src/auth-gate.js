@@ -57,6 +57,7 @@ async function bootApp() {
     await import('../app.js');
     await import('./phase5-report-form.js').then(({ installPhase5ReportForm }) => installPhase5ReportForm());
     await import('./phase6-ride-photo.js').then(({ installPhase6RidePhoto }) => installPhase6RidePhoto());
+    await import('./groomer-profile.js').then(({ installGroomerProfile }) => installGroomerProfile());
   } catch (error) {
     renderLogin('Aplikaci se nepodařilo načíst. Zkuste stránku obnovit.');
     console.error(error);
