@@ -1,16 +1,17 @@
 let activeStream = null;
 let activeFacingMode = 'environment';
 
-export function pickPhotoFromGallery(onFile) {
+export function pickPhotoFromGallery(onFiles) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
+  input.multiple = true;
   input.style.position = 'fixed';
   input.style.left = '-9999px';
   input.addEventListener('change', () => {
-    const file = input.files?.[0] || null;
+    const files = Array.from(input.files || []);
     input.remove();
-    if (file) onFile(file);
+    if (files.length) onFiles(files);
   }, { once: true });
   document.body.appendChild(input);
   input.click();
