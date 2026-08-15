@@ -59,7 +59,7 @@ export async function getTodayStats(date = new Date()) {
 export function createRideRecord(result, metadata = {}) {
   return {
     id: crypto.randomUUID(),
-    schemaVersion: 2,
+    schemaVersion: 3,
     status: 'completed',
     startedAt: Number(result.startedAt) || Date.now(),
     endedAt: Number(result.endedAt) || Date.now(),
@@ -76,6 +76,7 @@ export function createRideRecord(result, metadata = {}) {
       startLatitude: Number.isFinite(metadata.startLatitude) ? metadata.startLatitude : null,
       startLongitude: Number.isFinite(metadata.startLongitude) ? metadata.startLongitude : null,
     },
+    trackPoints: normalizeTrackPoints(result.trackPoints),
     photos: [],
     report: null,
     createdAt: Date.now(),
@@ -99,9 +100,23 @@ function normalizeRide(ride) {
       startLatitude: Number.isFinite(ride.metadata?.startLatitude) ? ride.metadata.startLatitude : null,
       startLongitude: Number.isFinite(ride.metadata?.startLongitude) ? ride.metadata.startLongitude : null,
     },
+    trackPoints: normalizeTrackPoints(ride.trackPoints),
     photos: Array.isArray(ride.photos) ? ride.photos : [],
     report: ride.report || null,
   };
+}
+
+function normalizeTrackPoints(points) {
+  if (!Array.isArray(points)) return [];
+  return points.filter((point) => (
+    Number.isFinite(point?.latitude)
+    && Number.isFinite(point?.longitude)
+  )).map((point) => ({
+    latitude: Number(point.latitude),
+    longitude: Number(point.longitude),
+    accuracy: Number.isFinite(point.accuracy) ? Number(point.accuracy) : null,
+    timestamp: Number(point.timestamp) || Date.now(),
+  }));
 }
 
 function openDatabase() {
