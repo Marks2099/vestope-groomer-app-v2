@@ -1,0 +1,70 @@
+/*
+ * Phase 8 – completion animation
+ *
+ * The existing ride-summary markup remains unchanged. The animation is
+ * intentionally CSS-only so it cannot interfere with GPS, ride tracking,
+ * persistence or photo storage.
+ */
+
+/* Soft entrance of the completed report. */
+.welcome-card:has(.summary-note) {
+  animation: phase8-card-in .48s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+/* Snowflake / winter signal above the completion state. */
+.welcome-card:has(.summary-note)::before {
+  content: "❄";
+  width: 68px;
+  height: 68px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  border-radius: 20px;
+  background: #e1f1fc;
+  color: #1769aa;
+  font-size: 36px;
+  line-height: 1;
+  box-shadow: 0 10px 28px rgba(23, 105, 170, .10);
+  animation: phase8-snowflake-in .72s cubic-bezier(.22, 1, .36, 1) .08s both;
+}
+
+/* The successful save confirmation gets a small, calm pulse. */
+.welcome-card:has(.summary-note) .summary-note {
+  animation: phase8-note-in .5s cubic-bezier(.22, 1, .36, 1) .22s both;
+}
+
+/* Final action appears only after the confirmation has settled. */
+.welcome-card:has(.summary-note) .summary-button {
+  animation: phase8-button-in .55s cubic-bezier(.22, 1, .36, 1) .34s both;
+}
+
+@keyframes phase8-card-in {
+  from { opacity: 0; transform: translateY(12px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes phase8-snowflake-in {
+  0% { opacity: 0; transform: translateY(-12px) scale(.65) rotate(-18deg); }
+  65% { opacity: 1; transform: translateY(2px) scale(1.06) rotate(4deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+}
+
+@keyframes phase8-note-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes phase8-button-in {
+  from { opacity: 0; transform: scale(.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-card:has(.summary-note),
+  .welcome-card:has(.summary-note)::before,
+  .welcome-card:has(.summary-note) .summary-note,
+  .welcome-card:has(.summary-note) .summary-button {
+    animation: none;
+  }
+}
