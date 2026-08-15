@@ -12,17 +12,8 @@
   margin-top: 14px;
 }
 
-.ride-photo-choice-grid,
-.photo-choice-grid {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.ride-photo-choice,
-.photo-add-button,
-.photo-gallery-button {
+.ride-photo-button,
+.photo-add-button {
   width: 100%;
   min-height: 52px;
   border: 1px solid #d4e7f6;
@@ -33,16 +24,8 @@
   cursor: pointer;
 }
 
-.ride-photo-choice.gallery,
-.photo-gallery-button {
-  background: #fff;
-  border-color: #dbe3eb;
-  color: #44566b;
-}
-
-.ride-photo-choice:disabled,
-.photo-add-button:disabled,
-.photo-gallery-button:disabled {
+.ride-photo-button:disabled,
+.photo-add-button:disabled {
   opacity: .65;
   cursor: wait;
 }
@@ -73,6 +56,73 @@
   color: #8a2c26;
   font-size: 12px;
   line-height: 1.4;
+}
+
+.photo-choice-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(9, 21, 36, .52);
+}
+
+.photo-choice-card {
+  width: min(100%, 420px);
+  padding: 18px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 25px 80px rgba(0,0,0,.24);
+}
+
+.photo-choice-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  color: #172235;
+}
+
+.photo-choice-header strong { font-size: 19px; }
+
+.photo-choice-close {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: #edf3f8;
+  color: #31445b;
+  font-size: 27px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.photo-choice-option {
+  width: 100%;
+  min-height: 58px;
+  margin-top: 10px;
+  border: 1px solid #d4e7f6;
+  border-radius: 16px;
+  background: #edf6fd;
+  color: #1769aa;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.photo-choice-option.gallery {
+  background: #fff;
+  border-color: #dbe3eb;
+  color: #44566b;
+}
+
+.photo-choice-option small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #7b8998;
 }
 
 .photo-camera-modal {
@@ -167,9 +217,9 @@
 }
 
 @media (max-width: 520px) {
-  .photo-camera-modal { padding: 10px; }
-  .photo-camera-card { padding: 12px; border-radius: 20px; }
+  .photo-camera-modal,
+  .photo-choice-modal { padding: 10px; }
+  .photo-camera-card,
+  .photo-choice-card { padding: 12px; border-radius: 20px; }
   .photo-camera-actions { grid-template-columns: 1fr; }
-  .ride-photo-choice-grid,
-  .photo-choice-grid { grid-template-columns: 1fr 1fr; }
 }
