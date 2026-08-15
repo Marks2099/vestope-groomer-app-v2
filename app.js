@@ -155,3 +155,13 @@ function requestLocation() {
 
 render();
 requestLocation();
+
+// Register the versioned service worker after the app is already interactive.
+// It must never block startup or GPS acquisition.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+      // Service worker is an enhancement only; the app remains fully usable without it.
+    });
+  }, { once: true });
+}
