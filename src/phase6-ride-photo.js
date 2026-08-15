@@ -10,6 +10,7 @@ function installRidePhotoControls() {
     if (!input || !originalButton) return;
 
     installedRows.add(row);
+    const wasBusy = originalButton.disabled;
     input.removeAttribute('capture');
     originalButton.remove();
 
@@ -22,9 +23,11 @@ function installRidePhotoControls() {
 
     const cameraButton = controls.querySelector('.camera');
     const galleryButton = controls.querySelector('.gallery');
+    cameraButton.disabled = wasBusy;
+    galleryButton.disabled = wasBusy;
 
     cameraButton.addEventListener('click', async () => {
-      if (cameraButton.disabled || originalButton.disabled) return;
+      if (cameraButton.disabled) return;
       setBusy(true);
       try {
         await openPhotoCamera(async (file) => submitFileToOriginalInput(file, input));
@@ -36,7 +39,7 @@ function installRidePhotoControls() {
     });
 
     galleryButton.addEventListener('click', () => {
-      if (galleryButton.disabled || originalButton.disabled) return;
+      if (galleryButton.disabled) return;
       input.removeAttribute('capture');
       pickPhotoFromGallery((file) => submitFileToOriginalInput(file, input));
     });
