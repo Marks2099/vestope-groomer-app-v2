@@ -9,6 +9,8 @@ export class RideEngine {
     this.lastPosition = null; this.trackPoints = []; this.totalDistanceM = 0;
     this.startedAt = 0; this.pausedAt = 0; this.pausedDurationMs = 0;
     this.isRunning = false; this.isPaused = false; this.lastError = null; this.tickId = null;
+    this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
+    document.addEventListener('visibilitychange', this.handleVisibilityChange);
   }
   start(initialPosition = null) {
     if (this.isRunning) return;
@@ -44,7 +46,7 @@ export class RideEngine {
     const result = { distanceM: this.totalDistanceM, activeTimeMs, pausedDurationMs: totalPausedDurationMs, startedAt: this.startedAt, endedAt, trackPoints: this.trackPoints.map((point) => ({ ...point })) };
     this.emit(); return result;
   }
-  destroy() { this.stopGpsWatch(); this.stopClock(); }
+  destroy() { this.stopGpsWatch(); this.stopClock(); document.removeEventListener('visibilitychange', this.handleVisibilityChange); }
   reset() { this.stopGpsWatch(); this.stopClock(); this.lastPosition = null; this.trackPoints = []; this.totalDistanceM = 0; this.startedAt = 0; this.pausedAt = 0; this.pausedDurationMs = 0; this.lastError = null; }
   startGpsWatch() {
     if (!('geolocation' in navigator)) { this.handleGpsError({ code: 0 }); return; }
@@ -52,6 +54,20 @@ export class RideEngine {
     this.watchId = navigator.geolocation.watchPosition((position) => this.handlePosition(position), (error) => this.handleGpsError(error), GPS_OPTIONS);
   }
   stopGpsWatch() { if (this.watchId !== null && 'geolocation' in navigator) navigator.geolocation.clearWatch(this.watchId); this.watchId = null; }
+  handleVisibilityChange() {
+    if (!this.isRunning || this.isPaused || document.visibilityState !== 'visible') return;
+    // iOS Safari/PWA may suspend a geolocation watch while the app is backgrounded.
+    // When the app returns, restart the watch and take one fresh position immediately.
+    this.stopGpsWatch();
+    this.startGpsWatch();
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => this.handlePosition(position),
+        (error) => this.handleGpsError(error),
+        GPS_OPTIONS
+      );
+    }
+  }
   startClock() { this.stopClock(); this.tickId = window.setInterval(() => this.emit(), 1000); }
   stopClock() { if (this.tickId !== null) window.clearInterval(this.tickId); this.tickId = null; }
   handlePosition(position) {
