@@ -16,6 +16,23 @@ export class RideEngine {
     this.lastPosition = this.normalizePosition(initialPosition); if (this.lastPosition) this.trackPoints.push(this.lastPosition);
     this.startGpsWatch(); this.startClock(); this.emit();
   }
+  restoreFromRecord(record) {
+    this.destroy();
+    this.reset();
+    const points = Array.isArray(record?.trackPoints) ? record.trackPoints : [];
+    this.trackPoints = points.map((point) => ({ ...point }));
+    this.lastPosition = this.trackPoints.at(-1) || null;
+    this.totalDistanceM = Math.max(0, Number(record?.distanceM) || 0);
+    this.startedAt = Number(record?.startedAt) || Date.now();
+    this.pausedDurationMs = Math.max(0, Number(record?.pausedDurationMs) || 0) + Math.max(0, Date.now() - (Number(record?.endedAt) || Date.now()));
+    this.pausedAt = 0;
+    this.isRunning = true;
+    this.isPaused = false;
+    this.lastError = null;
+    this.startGpsWatch();
+    this.startClock();
+    this.emit();
+  }
   pause() { if (!this.isRunning || this.isPaused) return; this.pausedAt = Date.now(); this.isPaused = true; this.stopGpsWatch(); this.emit(); }
   resume() { if (!this.isRunning || !this.isPaused) return; this.pausedDurationMs += Date.now() - this.pausedAt; this.pausedAt = 0; this.isPaused = false; this.lastPosition = null; this.startGpsWatch(); this.emit(); }
   stop() {
@@ -56,18 +73,9 @@ export class RideEngine {
   }
   getActiveTimeMs(now = Date.now()) { if (!this.startedAt) return 0; const pausedNow = this.isPaused ? now - this.pausedAt : 0; return Math.max(0, now - this.startedAt - this.pausedDurationMs - pausedNow); }
   getTrackPoints() { return this.trackPoints.map((point) => ({ ...point })); }
-  getSnapshot() {
-    return { isRunning: this.isRunning, isPaused: this.isPaused, distanceM: this.totalDistanceM, activeTimeMs: this.getActiveTimeMs(), position: this.lastPosition, trackPointCount: this.trackPoints.length, gpsError: this.lastError };
-  }
+  getSnapshot() { return { isRunning: this.isRunning, isPaused: this.isPaused, distanceM: this.totalDistanceM, activeTimeMs: this.getActiveTimeMs(), position: this.lastPosition, trackPointCount: this.trackPoints.length, gpsError: this.lastError }; }
   emit() { if (typeof this.onUpdate === 'function') this.onUpdate(this.getSnapshot()); }
 }
 function haversineMeters(a, b) { const lat1 = toRadians(a.latitude), lat2 = toRadians(b.latitude), dLat = lat2 - lat1, dLon = toRadians(b.longitude - a.longitude); const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2; return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h)); }
 function toRadians(value) { return value * Math.PI / 180; }
-function gpsErrorMessage(error) {
-  switch (error?.code) {
-    case 1: return 'Přístup k poloze byl zamítnut. Jízda může pokračovat, ale bez nových GPS bodů.';
-    case 2: return 'GPS signál se dočasně ztratil. Po obnovení polohy budeme pokračovat.';
-    case 3: return 'GPS odpověď trvá déle. Čekám na další polohu.';
-    default: return 'GPS je momentálně nedostupná. Čekám na další polohu.';
-  }
-}
+function gpsErrorMessage(error) { switch (error?.code) { case 1: return 'Přístup k poloze byl zamítnut. Jízda může pokračovat, ale bez nových GPS bodů.'; case 2: return 'GPS signál se dočasně ztratil. Po obnovení polohy budeme pokračovat.'; case 3: return 'GPS odpověď trvá déle. Čekám na další polohu.'; default: return 'GPS je momentálně nedostupná. Čekám na další polohu.'; } }
