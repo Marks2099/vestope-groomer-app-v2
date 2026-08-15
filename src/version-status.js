@@ -3,7 +3,7 @@ const VERSION_FILE = './version.json';
 const STYLE_ID = 'vestope-version-status-style';
 const BAR_ID = 'vestope-global-version-bar';
 let lastStatus = 'checking';
-let renderQueued = false;
+let versionCheckInFlight = false;
 
 function installStyles(){
   if(document.getElementById(STYLE_ID))return;
@@ -15,7 +15,28 @@ function installStyles(){
 }
 function ensureBar(){let bar=document.getElementById(BAR_ID);if(bar)return bar;bar=document.createElement('div');bar.id=BAR_ID;bar.className='app-version-bar';bar.setAttribute('role','status');bar.setAttribute('aria-live','polite');document.body.appendChild(bar);return bar}
 function render(status=lastStatus){const bar=ensureBar();const map={current:['✓','AKTUÁLNÍ','current'],checking:['…','KONTROLUJI','checking'],offline:['•','OFFLINE','offline'],update:['↑','NOVÁ VERZE K DISPOZICI','update']};const [icon,label,cls]=map[status]||map.checking;bar.innerHTML=`<span class="app-version-footer"><span>VeStope.cz</span><span>·</span><span>verze ${APP_VERSION}</span><span>·</span><span class="app-version-status ${cls}"><span class="app-version-mark">${icon}</span> ${label}</span></span>`}
-function scheduleRender(){if(renderQueued)return;renderQueued=true;queueMicrotask(()=>{renderQueued=false;render()})}
-async function checkVersion(){if(!navigator.onLine){lastStatus='offline';render();return}lastStatus='checking';render();try{const response=await fetch(`${VERSION_FILE}?check=${Date.now()}`,{cache:'no-store'});if(!response.ok)throw new Error('version check failed');const remote=await response.json();lastStatus=String(remote.version)===APP_VERSION?'current':'update'}catch(_){lastStatus=navigator.onLine?'checking':'offline'}render()}
-installStyles();render();window.addEventListener('online',checkVersion);window.addEventListener('offline',()=>{lastStatus='offline';render()});setTimeout(checkVersion,250);setInterval(checkVersion,5*60*1000);
-new MutationObserver(scheduleRender).observe(document.body,{childList:true,subtree:true});
+async function checkVersion(){
+  if(versionCheckInFlight)return;
+  if(!navigator.onLine){lastStatus='offline';render();return}
+  versionCheckInFlight=true;
+  lastStatus='checking';render();
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),8000);
+  try{
+    const response=await fetch(`${VERSION_FILE}?check=${Date.now()}`,{cache:'no-store',signal:controller.signal});
+    if(!response.ok)throw new Error('version check failed');
+    const remote=await response.json();
+    lastStatus=String(remote.version)===APP_VERSION?'current':'update';
+  }catch(_){
+    lastStatus=navigator.onLine?'current':'offline';
+  }finally{
+    clearTimeout(timeout);versionCheckInFlight=false;render();
+  }
+}
+
+installStyles();
+render();
+window.addEventListener('online',checkVersion);
+window.addEventListener('offline',()=>{lastStatus='offline';render()});
+setTimeout(checkVersion,250);
+setInterval(checkVersion,5*60*1000);
