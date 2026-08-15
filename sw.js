@@ -1,9 +1,11 @@
-const CACHE_NAME = 'vestope-groomer-v2-shell-v4';
+const CACHE_NAME = 'vestope-groomer-v2-shell-v5';
 const SHELL = [
   './',
   './index.html',
   './styles.css',
+  './src/phase5-report.css',
   './app.js',
+  './src/phase5-report-form.js',
   './src/ride-engine.js',
   './src/ride-store.js',
   './manifest.webmanifest',
@@ -38,6 +40,8 @@ self.addEventListener('fetch', event => {
     url.pathname.endsWith('/index.html') ||
     url.pathname.endsWith('/app.js') ||
     url.pathname.endsWith('/styles.css') ||
+    url.pathname.endsWith('/src/phase5-report.css') ||
+    url.pathname.endsWith('/src/phase5-report-form.js') ||
     url.pathname.endsWith('/src/ride-engine.js') ||
     url.pathname.endsWith('/src/ride-store.js');
 
