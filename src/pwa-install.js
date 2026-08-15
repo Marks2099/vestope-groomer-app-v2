@@ -4,11 +4,8 @@ const STYLE_ID = 'pwa-install-style';
 const OFFLINE_AUTH_KEY = 'vestope.offline-auth.v1';
 
 export function installPwaSupport() {
-  installStyles();
-  installConnectivityStatus();
-  installUpdateSupport();
+  installStyles(); installConnectivityStatus(); installUpdateSupport();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
-
   window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredPrompt = event; installed = false; ensureInstallButton(); });
   window.addEventListener('appinstalled', () => { deferredPrompt = null; installed = true; ensureInstallButton(); });
   ensureInstallButton();
@@ -17,16 +14,12 @@ export function installPwaSupport() {
 }
 
 function ensureInstallButton() {
-  const card = document.querySelector('.welcome-card');
-  if (!card || card.classList.contains('auth-card')) return;
-  let topbar = card.querySelector('.app-topbar');
-  if (!topbar || topbar.querySelector('#pwaInstallButton')) return;
+  const card = document.querySelector('.welcome-card'); if (!card || card.classList.contains('auth-card')) return;
+  let topbar = card.querySelector('.app-topbar'); if (!topbar || topbar.querySelector('#pwaInstallButton')) return;
   const button = document.createElement('button'); button.id = 'pwaInstallButton'; button.type = 'button'; button.className = 'pwa-install-button';
-  button.innerHTML = '<span class="ui-icon-wrap" aria-hidden="true">＋</span><span>NA PLOCHU</span>';
-  button.addEventListener('click', handleInstall); topbar.appendChild(button); updateButtonVisibility(button);
+  button.innerHTML = '<span class="ui-icon-wrap" aria-hidden="true">＋</span><span>NA PLOCHU</span>'; button.addEventListener('click', handleInstall); topbar.appendChild(button); updateButtonVisibility(button);
 }
 function updateButtonVisibility(button) { const standalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true; button.hidden = installed || standalone; }
-
 async function handleInstall() {
   if (deferredPrompt) { deferredPrompt.prompt(); const result = await deferredPrompt.userChoice; if (result?.outcome === 'accepted') installed = true; deferredPrompt = null; ensureInstallButton(); return; }
   if (isIos()) { showInstallHelp('Na iPhonu/iPadu klepni v Safari na tlačítko Sdílet a potom zvol „Přidat na plochu“.'); return; }
@@ -38,7 +31,6 @@ function showInstallHelp(message) {
   modal.innerHTML = `<div class="pwa-help-card" role="dialog" aria-modal="true"><button type="button" class="pwa-help-close" aria-label="Zavřít">×</button><div class="eyebrow">OFFLINE APLIKACE</div><h2>VeStope na ploše</h2><p>${message}</p><button type="button" class="pwa-help-ok">ROZUMÍM</button></div>`;
   document.body.appendChild(modal); modal.querySelector('.pwa-help-close').addEventListener('click', () => modal.remove()); modal.querySelector('.pwa-help-ok').addEventListener('click', () => modal.remove()); modal.addEventListener('click', event => { if (event.target === modal) modal.remove(); });
 }
-
 function installConnectivityStatus() { const update = () => updateConnectivityBadges(); window.addEventListener('online', update); window.addEventListener('offline', update); update(); }
 function updateConnectivityBadges() {
   const online = navigator.onLine !== false;
@@ -54,7 +46,12 @@ function installUpdateSupport() {
     updateReady = true; document.querySelector('.app-update-banner')?.remove();
     const banner = document.createElement('div'); banner.className = 'app-update-banner';
     banner.innerHTML = `<div><strong>Nová verze VeStope je připravená.</strong><small>Aktualizace je dostupná, protože jsi online.</small></div><button type="button" id="appUpdateButton">AKTUALIZOVAT</button><button type="button" class="app-update-close" aria-label="Později">×</button>`;
-    document.body.appendChild(banner); banner.querySelector('#appUpdateButton').addEventListener('click', () => location.reload()); banner.querySelector('.app-update-close').addEventListener('click', () => banner.remove());
+    document.body.appendChild(banner);
+    banner.querySelector('#appUpdateButton').addEventListener('click', () => {
+      if (document.querySelector('.ride-card')) { banner.querySelector('small').textContent = 'Nejdřív dokonči jízdu. Potom můžeš aplikaci bezpečně aktualizovat.'; return; }
+      location.reload();
+    });
+    banner.querySelector('.app-update-close').addEventListener('click', () => banner.remove());
   };
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (wasControlled) showUpdate(); });
   navigator.serviceWorker.ready.then(registration => {
