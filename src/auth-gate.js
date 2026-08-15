@@ -9,6 +9,13 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
 
+// Expose only the sign-out action to the authenticated UI.
+window.__vestopeLogout = async function () {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+  window.location.reload();
+};
+
 const app = document.querySelector('#app');
 
 function escapeHtml(value) {
