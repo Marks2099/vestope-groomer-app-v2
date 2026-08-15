@@ -49,6 +49,23 @@ export async function getTodayStats(date = new Date()) {
   }, { rides: 0, distanceM: 0, activeTimeMs: 0 });
 }
 
+export async function getPendingReports() {
+  await finalizeDueReports();
+  const rides = await getAllRides();
+  return rides.filter((ride) => ride.report?.status === 'pending' && Number(ride.report?.editableUntil) > Date.now())
+    .sort((a, b) => Number(b.endedAt || 0) - Number(a.endedAt || 0));
+}
+
+export async function finalizeDueReports() {
+  const rides = await getAllRides();
+  const now = Date.now();
+  const due = rides.filter((ride) => ride.report?.status === 'pending' && Number(ride.report?.editableUntil) <= now);
+  for (const ride of due) {
+    await saveRide({ ...ride, report: { ...ride.report, status: 'sent', sentAt: Number(ride.report?.editableUntil) || now } });
+  }
+  return due.length;
+}
+
 export function createRideRecord(result, metadata = {}) {
   return {
     id: metadata.id || crypto.randomUUID(), schemaVersion: 4, status: 'completed',
