@@ -1,10 +1,11 @@
-const CACHE_NAME = 'vestope-groomer-v2-shell-v3';
+const CACHE_NAME = 'vestope-groomer-v2-shell-v4';
 const SHELL = [
   './',
   './index.html',
   './styles.css',
   './app.js',
   './src/ride-engine.js',
+  './src/ride-store.js',
   './manifest.webmanifest',
 ];
 
@@ -33,13 +34,12 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // HTML and application code prefer the network so each Cloudflare deployment
-  // becomes visible immediately. Cache remains the offline fallback.
   const isAppCode = url.pathname.endsWith('/') ||
     url.pathname.endsWith('/index.html') ||
     url.pathname.endsWith('/app.js') ||
     url.pathname.endsWith('/styles.css') ||
-    url.pathname.endsWith('/src/ride-engine.js');
+    url.pathname.endsWith('/src/ride-engine.js') ||
+    url.pathname.endsWith('/src/ride-store.js');
 
   event.respondWith(
     isAppCode
