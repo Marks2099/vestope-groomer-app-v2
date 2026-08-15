@@ -190,7 +190,7 @@ p {
   font-size: 18px;
   font-weight: 900;
 }
-.outside-start { align-items: center; }
+.outside-start { align-items: center; display: flex; }
 
 .phase-button {
   width: min(100%, 210px);
