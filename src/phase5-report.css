@@ -7,9 +7,8 @@
 .report-section-title { display: flex; align-items: center; gap: 12px; margin-bottom: 13px; }
 .report-section-title h2 { margin: 0; font-size: 17px; color: #172235; }
 .report-section-title small { display: block; margin-top: 3px; color: #7a8a9d; font-size: 12px; }
-.report-icon { width: 42px; height: 42px; flex: 0 0 42px; display: inline-flex; align-items: center; justify-content: center; border-radius: 13px; background: #dff0fb; color: #1769aa; font-size: 23px; font-weight: 800; }
-.track-machine { font-size: 18px; }
-.track-type { font-size: 26px; }
+.report-icon { width: 42px; height: 42px; flex: 0 0 42px; display: inline-flex; align-items: center; justify-content: center; border-radius: 13px; background: #dff0fb; color: #1769aa; }
+.report-icon .ui-icon { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .check-option { min-height: 42px; display: flex; align-items: center; gap: 9px; padding: 9px 10px; border: 1px solid #dfe8ef; border-radius: 11px; background: #fbfdff; color: #35485e; font-size: 13px; line-height: 1.25; cursor: pointer; }
 .check-option input { position: absolute; opacity: 0; pointer-events: none; }
@@ -22,30 +21,17 @@
 .quality-option input { position: absolute; opacity: 0; pointer-events: none; }
 .quality-option.selected { border-color: #a9cce5; background: #f1f8fd; }
 .quality-dot { width: 17px; height: 17px; flex: 0 0 17px; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(0,0,0,.04); }
-.q-excellent { background: #16a653; }
-.q-verygood { background: #75c98a; }
-.q-passable { background: #f0c83f; }
-.q-limited { background: #ee8b35; }
-.q-bad { background: #dc4944; }
+.q-excellent { background: #16a653; }.q-verygood { background: #75c98a; }.q-passable { background: #f0c83f; }.q-limited { background: #ee8b35; }.q-bad { background: #dc4944; }
 .note-label { display: block; margin-bottom: 8px; font-weight: 800; color: #35485e; font-size: 14px; }
 .note-label span { font-weight: 400; color: #8a96a5; }
-.report-section textarea { width: 100%; resize: vertical; min-height: 86px; border: 1px solid #dce6ee; border-radius: 12px; padding: 11px 12px; font: inherit; font-size: 13px; color: #172235; outline: none; }
+.report-section textarea { width: 100%; resize: vertical; min-height: 86px; border: 1px solid #dce6ee; border-radius: 12px; padding: 11px 12px; font: inherit; font-size: 16px; color: #172235; outline: none; }
 .report-section textarea:focus { border-color: #8bbfe2; box-shadow: 0 0 0 3px rgba(139,191,226,.15); }
 .report-actions { display: grid; grid-template-columns: .8fr 1.2fr; gap: 9px; padding-top: 5px; }
 .report-actions button { min-height: 50px; border-radius: 13px; font-weight: 900; cursor: pointer; }
 .report-back { padding: 10px; }
 .save-report { border: 0; background: #20b55a; color: #fff; box-shadow: 0 8px 20px rgba(32,181,90,.18); }
 .save-report:disabled { opacity: .65; cursor: default; }
-.report-saved-card { justify-content: center; }
-.thanks-icon { width: 72px; height: 72px; display: grid; place-items: center; margin-bottom: 10px; border-radius: 22px; background: #dff0fb; color: #1769aa; font-size: 38px; }
-.report-saved { width: 100%; margin-top: 22px; padding: 15px; border-radius: 15px; background: #f2faf5; border: 1px solid #cfe9d8; color: #245d3b; text-align: center; }
-.report-saved strong, .report-saved span { display: block; }
-.report-saved span { margin-top: 4px; color: #6b7d70; font-size: 12px; }
-@media (max-width: 600px) {
-  .report-card { padding-top: 64px; padding-bottom: 28px; }
-  .check-grid { grid-template-columns: 1fr; gap: 6px; }
-  .track-type-grid { grid-template-columns: 1fr 1fr; }
-  .report-section { padding: 14px 0; }
-  .report-section-title { margin-bottom: 10px; }
-  .report-icon { width: 38px; height: 38px; flex-basis: 38px; }
-}
+.photo-add-button,.photo-choice-option{display:flex;align-items:center;justify-content:center;gap:9px}.button-icon{display:inline-flex;align-items:center;justify-content:center}.button-icon .ui-icon{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.report-saved-card { justify-content: center; }
+.thanks-icon { width: 72px; height: 72px; display: grid; place-items: center; margin-bottom: 10px; border-radius: 22px; background: #dff0fb; color: #1769aa; }
+.thanks-icon .ui-icon{width:38px;height:38px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.report-saved { width: 100%; margin-top: 22px; padding: 15px; border-radius: 15px; background: #f2faf5; border: 1px solid #cfe9d8; color: #245d3b; text-align: center; }.report-saved strong, .report-saved span { display: block; }.report-saved span { margin-top: 4px; color: #6b7d70; font-size: 12px; }
+@media (max-width: 600px) { .report-card { padding-top: 64px; padding-bottom: 28px; }.check-grid { grid-template-columns: 1fr; gap: 6px; }.track-type-grid { grid-template-columns: 1fr 1fr; }.report-section { padding: 14px 0; }.report-section-title { margin-bottom: 10px; }.report-icon { width: 38px; height: 38px; flex-basis: 38px; } }
