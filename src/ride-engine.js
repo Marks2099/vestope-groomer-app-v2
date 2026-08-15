@@ -13,6 +13,7 @@ export class RideEngine {
     this.onGpsError = onGpsError;
     this.watchId = null;
     this.lastPosition = null;
+    this.trackPoints = [];
     this.totalDistanceM = 0;
     this.startedAt = 0;
     this.pausedAt = 0;
@@ -30,6 +31,7 @@ export class RideEngine {
     this.isRunning = true;
     this.isPaused = false;
     this.lastPosition = this.normalizePosition(initialPosition);
+    if (this.lastPosition) this.trackPoints.push(this.lastPosition);
     this.startGpsWatch();
     this.startClock();
     this.emit();
@@ -71,6 +73,7 @@ export class RideEngine {
       pausedDurationMs: totalPausedDurationMs,
       startedAt: this.startedAt,
       endedAt,
+      trackPoints: this.trackPoints.map((point) => ({ ...point })),
     };
 
     this.emit();
@@ -86,6 +89,7 @@ export class RideEngine {
     this.stopGpsWatch();
     this.stopClock();
     this.lastPosition = null;
+    this.trackPoints = [];
     this.totalDistanceM = 0;
     this.startedAt = 0;
     this.pausedAt = 0;
@@ -137,7 +141,10 @@ export class RideEngine {
       const accuracy = Math.max(this.lastPosition.accuracy || 0, current.accuracy || 0);
       if (accuracy <= MAX_ACCEPTED_ACCURACY_M && segment <= MAX_SEGMENT_DISTANCE_M) {
         this.totalDistanceM += segment;
+        this.trackPoints.push(current);
       }
+    } else {
+      this.trackPoints.push(current);
     }
 
     this.lastPosition = current;
@@ -175,6 +182,7 @@ export class RideEngine {
       distanceM: this.totalDistanceM,
       activeTimeMs: this.getActiveTimeMs(),
       position: this.lastPosition,
+      trackPointCount: this.trackPoints.length,
       gpsError: this.lastError,
     };
   }
