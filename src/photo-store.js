@@ -1,5 +1,5 @@
 const DB_NAME = 'vestope-groomer-v2-media';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'photos';
 const MAX_PHOTOS_PER_RIDE = 30;
 const MAX_INPUT_BYTES = 15 * 1024 * 1024;
@@ -8,10 +8,10 @@ const MAX_EDGE = 1600;
 /**
  * Phase 6 – local photo storage.
  *
- * Photos are kept as Blobs in IndexedDB, not as base64 strings in the ride
- * record. The ride stores only lightweight photo metadata/IDs. This keeps the
- * ride database small and gives the later report sender a clean source for
- * the original photo bytes.
+ * Safari/iOS can be picky about structured-cloning File/Blob objects into
+ * IndexedDB. New records therefore store the optimized image as ArrayBuffer
+ * plus MIME metadata. ArrayBuffer is reconstructed to a Blob only when the
+ * original bytes are requested. Existing v1 Blob records remain readable.
  */
 export async function addRidePhoto({ rideId, file, capturedAt, position, nearestTrackPoint, nearestKnownStart }) {
   if (!rideId) throw new Error('Missing rideId');
@@ -22,15 +22,16 @@ export async function addRidePhoto({ rideId, file, capturedAt, position, nearest
   if (existing.length >= MAX_PHOTOS_PER_RIDE) throw new Error(`K jedné jízdě lze přidat maximálně ${MAX_PHOTOS_PER_RIDE} fotek.`);
 
   const blob = await optimizeImage(file);
+  const data = await blob.arrayBuffer();
   const id = crypto.randomUUID();
   const record = {
     id,
     rideId,
-    blob,
+    data,
     mimeType: blob.type || file.type || 'image/jpeg',
     fileName: file.name || `fotka-${id}.jpg`,
     originalSize: file.size,
-    storedSize: blob.size,
+    storedSize: data.byteLength,
     capturedAt: Number(capturedAt) || Date.now(),
     position: normalizePosition(position),
     nearestTrackPoint: normalizeTrackPoint(nearestTrackPoint),
@@ -42,7 +43,11 @@ export async function addRidePhoto({ rideId, file, capturedAt, position, nearest
   };
 
   const db = await openDatabase();
-  await requestAsPromise(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(record));
+  try {
+    await requestAsPromise(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(record));
+  } finally {
+    db.close();
+  }
   return toMetadata(record);
 }
 
@@ -50,9 +55,13 @@ export async function listRidePhotos(rideId) {
   if (!rideId) return [];
   try {
     const db = await openDatabase();
-    const store = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME);
-    const all = await requestAsPromise(store.getAll());
-    return all.filter((photo) => photo.rideId === rideId).sort((a, b) => a.capturedAt - b.capturedAt);
+    try {
+      const store = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME);
+      const all = await requestAsPromise(store.getAll());
+      return all.filter((photo) => photo.rideId === rideId).sort((a, b) => a.capturedAt - b.capturedAt);
+    } finally {
+      db.close();
+    }
   } catch {
     return [];
   }
@@ -62,7 +71,16 @@ export async function getRidePhoto(id) {
   if (!id) return null;
   try {
     const db = await openDatabase();
-    return await requestAsPromise(db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(id));
+    try {
+      const record = await requestAsPromise(db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(id));
+      if (!record) return null;
+      if (!record.blob && record.data instanceof ArrayBuffer) {
+        record.blob = new Blob([record.data], { type: record.mimeType || 'image/jpeg' });
+      }
+      return record;
+    } finally {
+      db.close();
+    }
   } catch {
     return null;
   }
@@ -71,17 +89,25 @@ export async function getRidePhoto(id) {
 export async function deleteRidePhoto(id) {
   if (!id) return;
   const db = await openDatabase();
-  await requestAsPromise(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).delete(id));
+  try {
+    await requestAsPromise(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).delete(id));
+  } finally {
+    db.close();
+  }
 }
 
 export async function clearRidePhotos(rideId) {
   const photos = await listRidePhotos(rideId);
   if (!photos.length) return;
   const db = await openDatabase();
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  const store = tx.objectStore(STORE_NAME);
-  photos.forEach((photo) => store.delete(photo.id));
-  await transactionDone(tx);
+  try {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    photos.forEach((photo) => store.delete(photo.id));
+    await transactionDone(tx);
+  } finally {
+    db.close();
+  }
 }
 
 export function photoMetadataForRide(photos) {
@@ -128,12 +154,7 @@ function normalizePosition(position) {
   const longitude = Number(position.coords?.longitude ?? position.longitude);
   const accuracy = Number(position.coords?.accuracy ?? position.accuracy);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  return {
-    latitude,
-    longitude,
-    accuracy: Number.isFinite(accuracy) ? accuracy : null,
-    timestamp: Number(position.timestamp) || Date.now(),
-  };
+  return { latitude, longitude, accuracy: Number.isFinite(accuracy) ? accuracy : null, timestamp: Number(position.timestamp) || Date.now() };
 }
 
 function normalizeTrackPoint(point) {
@@ -141,15 +162,11 @@ function normalizeTrackPoint(point) {
   const latitude = Number(point.latitude);
   const longitude = Number(point.longitude);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  return {
-    latitude,
-    longitude,
-    timestamp: Number(point.timestamp) || Date.now(),
-  };
+  return { latitude, longitude, timestamp: Number(point.timestamp) || Date.now() };
 }
 
 function openDatabase() {
-  if (!('indexedDB' in window)) return Promise.reject(new Error('IndexedDB unavailable'));
+  if (!('indexedDB' in window)) return Promise.reject(new Error('IndexedDB není v tomto prohlížeči dostupné.'));
   return new Promise((resolve, reject) => {
     const request = window.indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
@@ -161,21 +178,21 @@ function openDatabase() {
       }
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error('Photo database open failed'));
+    request.onerror = () => reject(request.error || new Error('Databázi fotek se nepodařilo otevřít.'));
   });
 }
 
 function requestAsPromise(request) {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error('Photo database request failed'));
+    request.onerror = () => reject(request.error || new Error('Fotku se nepodařilo uložit.'));
   });
 }
 
 function transactionDone(transaction) {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error || new Error('Photo transaction failed'));
-    transaction.onabort = () => reject(transaction.error || new Error('Photo transaction aborted'));
+    transaction.onerror = () => reject(transaction.error || new Error('Uložení fotky se nepodařilo dokončit.'));
+    transaction.onabort = () => reject(transaction.error || new Error('Uložení fotky bylo přerušeno.'));
   });
 }
