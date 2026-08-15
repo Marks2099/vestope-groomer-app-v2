@@ -1,6 +1,6 @@
-const CACHE_NAME = 'vestope-groomer-v2-shell-v13';
+const CACHE_NAME = 'vestope-groomer-v2-shell-v14';
 const SHELL = [
-  './', './index.html', './styles.css', './manifest.webmanifest', './assets/pwa-icon.svg',
+  './', './index.html', './styles.css', './src/mobile-ux.css', './manifest.webmanifest', './assets/pwa-icon.svg',
   './app.js', './src/auth-gate.js', './src/auth-gate.css', './src/pwa-install.js',
   './src/groomer-profile.js', './src/phase5-report-form.js', './src/phase5-report.css',
   './src/phase6-ride-photo.js', './src/phase6-photo.css', './src/phase8-animation.css',
