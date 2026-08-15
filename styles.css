@@ -16,7 +16,7 @@ body { min-height: 100vh; }
   padding: 24px;
   position: relative;
   overflow: hidden;
-  background: #c9e3f8 url("./assets/winter-bg.svg") center / cover fixed no-repeat;
+  background: #c9e3f8 url("https://raw.githubusercontent.com/Marks2099/vestope-groomer-app/main/vestope-groomer-background.webp") center / cover fixed no-repeat;
 }
 
 .welcome-card {
