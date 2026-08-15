@@ -10,27 +10,19 @@
   <link rel="stylesheet" href="./src/phase5-report.css">
   <link rel="stylesheet" href="./src/phase6-photo.css">
   <link rel="stylesheet" href="./src/phase8-animation.css">
+  <link rel="stylesheet" href="./src/auth-gate.css">
   <title>VeStope.cz – Rolbař</title>
 </head>
 <body>
   <main id="app" class="app-shell">
-    <section class="welcome-card">
+    <section class="welcome-card auth-card">
       <div class="online-badge"><span></span> ONLINE</div>
-      <img class="brand-logo" src="https://raw.githubusercontent.com/Marks2099/vestope-groomer-app/main/logo_vestope.cz.png" alt="VeStope.cz">
-      <div class="eyebrow">TESTOVACÍ VERZE</div>
-      <h1>Jsem připravený.</h1>
-      <p>Můžeme vyrazit?</p>
+      <div class="eyebrow">PŘIHLÁŠENÍ</div>
+      <h1>Vítej zpátky.</h1>
+      <p>Načítám přihlášení…</p>
     </section>
     <footer>VeStope.cz – Evidence a monitoring rolbařů</footer>
   </main>
-  <script type="module" src="./app.js"></script>
-  <script type="module">
-    import { installPhase5ReportForm } from './src/phase5-report-form.js';
-    import { installPhase6RidePhoto } from './src/phase6-ride-photo.js';
-    import { installGroomerProfile } from './src/groomer-profile.js';
-    installPhase5ReportForm();
-    installPhase6RidePhoto();
-    installGroomerProfile();
-  </script>
+  <script type="module" src="./src/auth-gate.js"></script>
 </body>
 </html>
