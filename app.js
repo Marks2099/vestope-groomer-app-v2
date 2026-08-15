@@ -7,6 +7,7 @@ const state = {
   phase: 'checking-gps',
   position: null,
   error: null,
+  permission: 'unknown',
 };
 
 function render() {
@@ -40,7 +41,7 @@ function render() {
       <div class="eyebrow">TESTOVACÍ VERZE</div>
       <h1>GPS se nepodařilo ověřit.</h1>
       <p>${escapeHtml(state.error || 'Zkontrolujte oprávnění k poloze a zkuste to znovu.')}</p>
-      <div class="gps-error" role="alert">Aplikace se nezasekne. Po 12 sekundách kontrolu ukončí a můžete ji zopakovat.</div>
+      <div class="gps-error" role="alert">${permissionHelpText()}</div>
       <button class="phase-button" id="retryButton" type="button">ZKUSIT ZNOVU</button>
       <button class="secondary phase-secondary" id="continueButton" type="button">Pokračovat bez GPS</button>
     `,
@@ -68,8 +69,6 @@ function render() {
     render();
   });
   document.querySelector('#startButton')?.addEventListener('click', () => {
-    // Phase 1 intentionally stops here. The ride engine will be added only after
-    // this GPS preflight has been tested independently.
     state.phase = 'noGps';
     render();
     const button = document.querySelector('#startButton');
@@ -78,6 +77,13 @@ function render() {
       button.disabled = true;
     }
   });
+}
+
+function permissionHelpText() {
+  if (state.permission === 'denied' || state.error?.includes('zamítnut')) {
+    return 'Pokud jste povolení k poloze zamítli, prohlížeč nemusí další dotaz zobrazit. Povolte polohu pro tento web v nastavení prohlížeče a potom stiskněte ZKUSIT ZNOVU.';
+  }
+  return 'Aplikace se nezasekne. Kontrola má časový limit 12 sekund a můžete ji bezpečně zopakovat.';
 }
 
 function formatPosition(position) {
@@ -106,7 +112,17 @@ function locationErrorMessage(error) {
   }
 }
 
-function requestLocation() {
+async function readPermissionState() {
+  try {
+    if (!navigator.permissions?.query) return 'unknown';
+    const result = await navigator.permissions.query({ name: 'geolocation' });
+    return result.state || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+async function requestLocation() {
   if (!('geolocation' in navigator)) {
     state.error = 'Tento prohlížeč nepodporuje geolokaci.';
     state.phase = 'error';
@@ -114,6 +130,7 @@ function requestLocation() {
     return;
   }
 
+  state.permission = await readPermissionState();
   state.phase = 'checking-gps';
   state.error = null;
   state.position = null;
@@ -133,14 +150,16 @@ function requestLocation() {
       if (settled) return;
       settled = true;
       window.clearTimeout(timeoutId);
+      state.permission = 'granted';
       state.position = position;
       state.phase = 'ready';
       render();
     },
-    (error) => {
+    async (error) => {
       if (settled) return;
       settled = true;
       window.clearTimeout(timeoutId);
+      state.permission = await readPermissionState();
       state.error = locationErrorMessage(error);
       state.phase = 'error';
       render();
