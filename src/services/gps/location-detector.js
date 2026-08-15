@@ -1,4 +1,4 @@
-import { haversine } from '../../ride-engine.js';
+const EARTH_RADIUS_M = 6371000;
 
 /**
  * Phase 3 – geographic context.
@@ -103,10 +103,7 @@ async function getStartPoints(areaId) {
     console.warn('Start point database lookup failed; using local fallback.', error);
   }
 
-  if (areaId === DEFAULT_AREA_ID) {
-    return ZELEZNA_RUDA_STARTS;
-  }
-
+  if (areaId === DEFAULT_AREA_ID) return ZELEZNA_RUDA_STARTS;
   return [];
 }
 
@@ -122,4 +119,15 @@ function normalizePosition(position) {
   const longitude = Number(position?.coords?.longitude ?? position?.longitude);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
   return { latitude, longitude };
+}
+
+function haversine(a, b) {
+  const radians = Math.PI / 180;
+  const lat1 = a.latitude * radians;
+  const lat2 = b.latitude * radians;
+  const dLat = (b.latitude - a.latitude) * radians;
+  const dLon = (b.longitude - a.longitude) * radians;
+  const h = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
 }
