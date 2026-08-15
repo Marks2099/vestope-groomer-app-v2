@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vestope-groomer-v2-shell-v20';
+const CACHE_NAME = 'vestope-groomer-v2-shell-v21';
 const CACHE_PREFIX = 'vestope-groomer-v2-shell-v';
 const CONTROL_CACHE = 'vestope-groomer-v2-control';
 const SHELL = [
