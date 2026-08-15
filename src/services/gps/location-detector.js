@@ -1,4 +1,5 @@
 const EARTH_RADIUS_M = 6371000;
+const START_LOOKUP_TIMEOUT_MS = 4000;
 
 /**
  * Phase 3 – geographic context.
@@ -75,6 +76,9 @@ export function formatDistanceToStart(distanceM) {
 async function getStartPoints(areaId) {
   if (cachedStarts.has(areaId)) return cachedStarts.get(areaId);
 
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), START_LOOKUP_TIMEOUT_MS);
+
   try {
     const params = new URLSearchParams({
       select: 'id,name,latitude,longitude,location_types',
@@ -86,6 +90,7 @@ async function getStartPoints(areaId) {
         apikey: SUPABASE_PUBLISHABLE_KEY,
         Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
       },
+      signal: controller.signal,
     });
     if (!response.ok) throw new Error(`ski_locations request failed: ${response.status}`);
 
@@ -101,6 +106,8 @@ async function getStartPoints(areaId) {
     }
   } catch (error) {
     console.warn('Start point database lookup failed; using local fallback.', error);
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 
   if (areaId === DEFAULT_AREA_ID) return ZELEZNA_RUDA_STARTS;
