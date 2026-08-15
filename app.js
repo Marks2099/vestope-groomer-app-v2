@@ -1,5 +1,6 @@
 import { RideEngine } from './src/ride-engine.js';
 import { createRideRecord, saveRide } from './src/ride-store.js';
+import { DEFAULT_AREA_ID, detectStartLocation, formatDistanceToStart } from './src/services/gps/location-detector.js';
 
 const app = document.querySelector('#app');
 const GPS_TIMEOUT_MS = 12000;
@@ -7,7 +8,7 @@ const GPS_MAX_AGE_MS = 15000;
 
 const state = {
   phase: 'checking-gps', position: null, error: null, permission: 'unknown',
-  ride: null, lastRide: null,
+  ride: null, lastRide: null, locationMatch: null,
 };
 
 const rideEngine = new RideEngine({
@@ -31,7 +32,7 @@ function render() {
       <div class="online-badge"><span></span> ONLINE</div>
       <img class="brand-logo" src="https://raw.githubusercontent.com/Marks2099/vestope-groomer-app/main/logo_vestope.cz.png" alt="VeStope.cz">
       <div class="eyebrow">TESTOVACÍ VERZE</div><h1>Jsem připravený.</h1><p>Můžeme vyrazit?</p>
-      <div class="gps-success" role="status" aria-live="polite"><span class="gps-check" aria-hidden="true">✓</span><div><strong>GPS je připravená</strong><small>${formatPosition(state.position)}</small></div></div>
+      ${renderLocationMatch(state.locationMatch)}
       <button class="phase-button" id="startButton" type="button">JEDU</button>`,
     error: `
       <div class="online-badge"><span></span> ONLINE</div>
@@ -66,6 +67,26 @@ function render() {
   document.querySelector('#newRideButton')?.addEventListener('click', requestLocation);
 }
 
+function renderLocationMatch(match) {
+  if (!match) {
+    return `<div class="gps-warning" role="status">GPS je připravená. Výchozí bod zatím nedokážu určit.</div>`;
+  }
+
+  if (match.startPointDetected) {
+    return `<div class="gps-success location-context" role="status" aria-live="polite">
+      <span class="gps-check" aria-hidden="true">✓</span>
+      <div><strong>Jsi u výchozího bodu</strong><small>${escapeHtml(match.nearestStart.name)}</small></div>
+    </div>
+    <div class="location-explanation">Tady můžeš vyrazit. Už vím, odkud jízda začíná.</div>`;
+  }
+
+  return `<div class="gps-error location-context outside-start" role="status" aria-live="polite">
+    <span class="location-cross" aria-hidden="true">✕</span>
+    <div><strong>Nejsi u výchozího bodu</strong><small>Nejbližší známý bod: ${escapeHtml(match.nearestStart.name)} · ${formatDistanceToStart(match.distanceToNearestStartM)}</small></div>
+  </div>
+  <div class="location-explanation friendly">Nevadí. Jsme kluci šikovní a společně to zvládneme. GPS trasu zaznamenáme a výchozí bod dokážeme správně určit zpětně.</div>`;
+}
+
 function renderRide() {
   const ride = state.ride || rideEngine.getSnapshot();
   const time = formatDuration(ride.activeTimeMs), distance = formatDistance(ride.distanceM), paused = ride.isPaused;
@@ -82,9 +103,11 @@ function renderRide() {
 
 function renderRideSummary() {
   if (!state.lastRide) return '';
+  const startName = state.lastRide.metadata?.locationName;
+  const locationText = startName ? `<div class="small">Výchozí bod: ${escapeHtml(startName)}</div>` : '';
   return `<div class="online-badge"><span></span> ONLINE</div><div class="eyebrow">JÍZDA UKONČENA</div><h1>Hotovo.</h1><p>Jízda byla bezpečně ukončena.</p>
     <div class="summary-grid"><div><strong>${formatDistance(state.lastRide.distanceM)}</strong><small>km</small></div><div><strong>${formatDuration(state.lastRide.activeTimeMs)}</strong><small>aktivní čas</small></div></div>
-    <div class="gps-success summary-note">✓ Jízda je uložená v tomto zařízení.</div><button class="phase-button summary-button" id="newRideButton" type="button">NOVÁ JÍZDA</button>`;
+    <div class="gps-success summary-note">✓ Jízda je uložená v tomto zařízení.</div>${locationText}<button class="phase-button summary-button" id="newRideButton" type="button">NOVÁ JÍZDA</button>`;
 }
 
 function startRide() {
@@ -113,7 +136,17 @@ async function stopRide() {
   const result = rideEngine.stop();
   const startPosition = state.position;
   state.phase = 'savingRide'; state.ride = null; render();
-  const record = createRideRecord(result, { startLatitude: startPosition?.coords?.latitude, startLongitude: startPosition?.coords?.longitude });
+  const match = state.locationMatch;
+  const record = createRideRecord(result, {
+    locationName: match?.startPointDetected ? match.nearestStart.name : null,
+    startPointDetected: Boolean(match?.startPointDetected),
+    nearestStartPointId: match?.nearestStart?.id || null,
+    nearestStartPointName: match?.nearestStart?.name || null,
+    distanceToNearestStartM: match?.distanceToNearestStartM ?? null,
+    areaId: match?.areaId || DEFAULT_AREA_ID,
+    startLatitude: startPosition?.coords?.latitude,
+    startLongitude: startPosition?.coords?.longitude,
+  });
   state.lastRide = await saveRide(record);
   state.phase = 'rideSummary'; render();
 }
@@ -138,11 +171,13 @@ async function readPermissionState() { try { if (!navigator.permissions?.query) 
 
 async function requestLocation() {
   if (!('geolocation' in navigator)) { state.error = 'Tento prohlížeč nepodporuje geolokaci.'; state.phase = 'error'; render(); return; }
-  state.permission = await readPermissionState(); state.phase = 'checking-gps'; state.error = null; state.position = null; state.ride = null; state.lastRide = null; render();
+  state.permission = await readPermissionState(); state.phase = 'checking-gps'; state.error = null; state.position = null; state.ride = null; state.lastRide = null; state.locationMatch = null; render();
   let settled = false;
   const timeoutId = window.setTimeout(() => { if (settled) return; settled = true; state.error = 'GPS odpověď trvala příliš dlouho. Kontrola byla bezpečně ukončena.'; state.phase = 'error'; render(); }, GPS_TIMEOUT_MS);
-  navigator.geolocation.getCurrentPosition((position) => {
-    if (settled) return; settled = true; window.clearTimeout(timeoutId); state.permission = 'granted'; state.position = position; state.phase = 'ready'; render();
+  navigator.geolocation.getCurrentPosition(async (position) => {
+    if (settled) return; settled = true; window.clearTimeout(timeoutId); state.permission = 'granted'; state.position = position;
+    state.locationMatch = await detectStartLocation(position, DEFAULT_AREA_ID);
+    state.phase = 'ready'; render();
   }, async (error) => {
     if (settled) return; settled = true; window.clearTimeout(timeoutId); state.permission = await readPermissionState(); state.error = locationErrorMessage(error); state.phase = 'error'; render();
   }, { enableHighAccuracy: true, timeout: GPS_TIMEOUT_MS - 500, maximumAge: GPS_MAX_AGE_MS });
