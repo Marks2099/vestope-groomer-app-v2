@@ -74,9 +74,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    pruneOldCaches().then(() => self.clients.claim())
-  );
+  event.waitUntil(pruneOldCaches().then(() => self.clients.claim()));
 });
 
 self.addEventListener('message', event => {
@@ -88,6 +86,10 @@ self.addEventListener('message', event => {
     event.waitUntil((async () => {
       const rollbackCache = await getRollbackCache();
       if (!rollbackCache) return;
+      const currentCache = await caches.open(CACHE_NAME);
+      const rollback = await caches.open(rollbackCache);
+      const currentVersionStatus = await currentCache.match('./src/version-status.js');
+      if (currentVersionStatus) await rollback.put('./src/version-status.js', currentVersionStatus.clone());
       await setRollbackTarget(rollbackCache);
       await self.clients.claim();
       const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
@@ -117,10 +119,7 @@ self.addEventListener('fetch', event => {
 
     try {
       const response = await fetch(request);
-      if (response && (response.ok || response.type === 'opaque')) {
-        const copy = response.clone();
-        preferredCache.put(request, copy).catch(() => {});
-      }
+      if (response && (response.ok || response.type === 'opaque')) preferredCache.put(request, response.clone()).catch(() => {});
       return response;
     } catch (_) {
       if (request.mode === 'navigate') {
