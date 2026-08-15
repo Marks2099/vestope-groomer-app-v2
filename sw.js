@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vestope-groomer-v2-shell-v7';
+const CACHE_NAME = 'vestope-groomer-v2-shell-v8';
 const SHELL = ['./','./index.html','./styles.css','./src/phase5-report.css','./src/phase6-photo.css','./app.js','./src/phase5-report-form.js','./src/photo-store.js','./src/ride-engine.js','./src/ride-store.js','./manifest.webmanifest'];
 self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('vestope-groomer-v2-') && key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim())); });
