@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vestope-groomer-v2-shell-v17';
+const CACHE_NAME = 'vestope-groomer-v2-shell-v18';
 const SHELL = [
   './', './index.html', './styles.css', './src/mobile-ux.css', './manifest.webmanifest', './version.json', './assets/pwa-logo.png', './assets/pwa-logo-512.png',
   './app.js', './src/auth-gate.js', './src/auth-gate.css', './src/pwa-install.js', './src/ride-animation.js', './src/version-status.js',
@@ -41,6 +41,10 @@ self.addEventListener('activate', event => {
       .then(keys => Promise.all(keys.filter(key => key.startsWith('vestope-groomer-v2-') && key !== CACHE_NAME).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', event => {
