@@ -17,6 +17,40 @@ window.__vestopeLogout = async function () {
   }
 };
 
+window.__vestopeGetGroomerProfile = async function () {
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  if (!session?.user?.id) return null;
+
+  const { data, error } = await supabase
+    .from('groomers')
+    .select('id,name,username,email,phone,role,active')
+    .eq('user_id', session.user.id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
+};
+
+window.__vestopeUpdateGroomerContacts = async function ({ email, phone } = {}) {
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  if (!session?.user?.id) throw new Error('Uživatel není přihlášen.');
+
+  const normalizedEmail = String(email ?? '').trim() || null;
+  const normalizedPhone = String(phone ?? '').trim() || null;
+
+  const { data, error } = await supabase
+    .from('groomers')
+    .update({ email: normalizedEmail, phone: normalizedPhone })
+    .eq('user_id', session.user.id)
+    .select('id,name,username,email,phone,role,active')
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
+};
+
 const app = document.querySelector('#app');
 
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>\"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' })[char]); }
@@ -70,6 +104,7 @@ async function bootApp(forceOffline = false){
     await import('./phase5-report-form.js').then(({installPhase5ReportForm})=>installPhase5ReportForm());
     await import('./phase6-ride-photo.js').then(({installPhase6RidePhoto})=>installPhase6RidePhoto());
     await import('./groomer-profile.js').then(({installGroomerProfile})=>installGroomerProfile());
+    await import('./groomer-contact.js').then(({installGroomerContact})=>installGroomerContact());
   } catch(error) {
     renderLogin(isOffline() ? 'Offline verze není ještě kompletně uložená v zařízení. Připoj se jednou online a otevři aplikaci znovu.' : 'Aplikaci se nepodařilo načíst. Zkuste stránku obnovit.');
     console.error(error);
